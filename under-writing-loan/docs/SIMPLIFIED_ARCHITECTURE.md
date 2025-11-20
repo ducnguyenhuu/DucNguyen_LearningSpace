@@ -1,7 +1,3 @@
----
-agent: speckit.specify
----
-
 # 🎓 Simplified Loan Underwriting AI Agent - Research Project
 
 **Purpose:** Educational/Research project to understand AI agent workflows, Gen AI reasoning, OCR, RAG, and MCP integration.
@@ -1280,4 +1276,3 @@ By the end of this project, you will:
 ---
 
 **Let's build and learn! 🚀**
-
