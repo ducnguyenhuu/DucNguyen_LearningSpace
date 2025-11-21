@@ -9,19 +9,18 @@
 
 ### User Story 1 - Document Processing & Extraction (Priority: P1)
 
-A learner wants to understand how AI extracts structured data from unstructured loan application documents (pay stubs, bank statements, tax returns) using a hybrid OCR approach.
+A learner wants to understand how AI extracts structured data from unstructured loan application documents (pay stubs, bank statements, tax returns) using Azure Document Intelligence.
 
-**Why this priority**: Foundation for all other agents - without document extraction, no downstream analysis is possible. This represents the entry point data pipeline and demonstrates cost-effective OCR strategies.
+**Why this priority**: Foundation for all other agents - without document extraction, no downstream analysis is possible. This represents the entry point data pipeline and demonstrates cost-effective document processing strategies.
 
-**Independent Test**: Upload a sample pay stub PDF, system extracts structured fields (employer name, gross/net income, pay period) as JSON with confidence scores, demonstrating Document Intelligence primary extraction and GPT-4 Vision fallback when confidence is low.
+**Independent Test**: Upload a sample pay stub PDF, system extracts structured fields (employer name, gross/net income, pay period) as JSON with confidence scores using Document Intelligence.
 
 **Acceptance Scenarios**:
 
 1. **Given** a clean digital pay stub PDF, **When** learner uploads it via notebook, **Then** Azure Document Intelligence extracts all required fields with >0.7 confidence and returns structured JSON matching Pydantic schema
-2. **Given** a scanned/poor quality document, **When** Document Intelligence returns <0.7 confidence on critical fields, **Then** system automatically triggers GPT-4 Vision fallback and successfully extracts data
-3. **Given** extracted data from either tool, **When** GPT-4 normalization runs, **Then** field names are unified and derived values (monthly from annual income) are calculated
-4. **Given** normalized extraction results, **When** validation pass executes, **Then** system checks consistency rules (net <= gross income, dates chronological) and flags violations
-5. **Given** completed extraction, **When** learner views output in notebook, **Then** see JSON with completeness score, confidence per field, and which tool was used (DI vs Vision)
+2. **Given** extracted data from Document Intelligence, **When** GPT-4o normalization runs, **Then** field names are unified and derived values (monthly from annual income) are calculated
+3. **Given** normalized extraction results, **When** validation pass executes, **Then** system checks consistency rules (net <= gross income, dates chronological) and flags violations
+4. **Given** completed extraction, **When** learner views output in notebook, **Then** see JSON with completeness score and confidence per field
 
 ---
 
@@ -31,13 +30,13 @@ A learner wants to understand how AI agents calculate financial metrics (DTI, LT
 
 **Why this priority**: Core underwriting logic - demonstrates both deterministic calculation and AI-powered interpretation. Shows MCP data access pattern and how agents combine multiple data sources.
 
-**Independent Test**: Given extracted document data and SSN, system queries mock credit database via MCP, calculates financial ratios, prompts GPT-4 for risk analysis, and returns risk level (low/medium/high) with reasoning.
+**Independent Test**: Given extracted document data and SSN, system queries mock credit database via MCP, calculates financial ratios, prompts GPT-4o for risk analysis, and returns risk level (low/medium/high) with reasoning.
 
 **Acceptance Scenarios**:
 
 1. **Given** extracted income/debt data and an SSN, **When** risk agent executes, **Then** MCP server queries mock credit database and returns credit score, payment history, utilization
 2. **Given** extracted data and credit info, **When** financial calculations run, **Then** system computes DTI = (monthly debt / monthly income) × 100, LTV = (loan amount / property value) × 100, PTI accurately
-3. **Given** calculated metrics, **When** GPT-4 risk analysis prompt executes, **Then** LLM returns risk level with top 3 risk factors and top 3 mitigating factors
+3. **Given** calculated metrics, **When** GPT-4o risk analysis prompt executes, **Then** LLM returns risk level with top 3 risk factors and top 3 mitigating factors
 4. **Given** completed risk assessment, **When** learner views results in notebook, **Then** see interactive Plotly chart of DTI/LTV/PTI bars and GPT-4's step-by-step reasoning
 5. **Given** multiple test profiles (excellent 820 score vs risky 620 score), **When** learner processes both, **Then** system produces different risk levels and reasoning reflecting credit quality differences
 
@@ -115,27 +114,27 @@ A learner wants to understand how to track ML experiments by logging agent execu
 
 ---
 
-### User Story 7 - Cost Optimization & Fallback Strategy (Priority: P3)
+### User Story 7 - Cost Optimization & Tracking (Priority: P3)
 
-A learner wants to understand cost/performance tradeoffs by observing when the system uses cheap Document Intelligence vs expensive GPT-4 Vision, and logging fallback decisions.
+A learner wants to understand cost tracking and optimization by monitoring Document Intelligence usage and analyzing extraction patterns.
 
 **Why this priority**: Real-world production concern - demonstrates practical AI engineering beyond pure functionality. Teaches budget-conscious development.
 
-**Independent Test**: Process mix of clean and poor-quality documents, system attempts Document Intelligence first, logs confidence scores, triggers Vision fallback only when needed, and reports cost breakdown showing 10x savings.
+**Independent Test**: Process batch of documents, system tracks Document Intelligence costs, logs confidence scores, and reports cost breakdown per document.
 
 **Acceptance Scenarios**:
 
-1. **Given** a batch of 10 clean digital PDFs, **When** document agent processes, **Then** 9/10 use Document Intelligence only (~$0.001/page) without Vision fallback
-2. **Given** a scanned low-quality PDF, **When** Document Intelligence returns 0.5 confidence, **Then** system logs fallback trigger reason and invokes GPT-4 Vision (~$0.02/image)
-3. **Given** both DI and Vision produce results for same field, **When** values conflict, **Then** GPT-4 text adjudication prompt receives both and picks correct value with reasoning
-4. **Given** completed batch processing, **When** learner views cost analysis, **Then** see per-document cost breakdown and total showing DI-first strategy saves ~80-90% vs Vision-only approach
-5. **Given** logged fallback cases, **When** learner analyzes patterns, **Then** identify document types consistently needing Vision (e.g., handwritten notes) as candidates for custom model training
+1. **Given** a batch of 10 digital PDFs, **When** document agent processes, **Then** system logs Document Intelligence cost (~$0.001/page) for each document
+2. **Given** extraction results, **When** Document Intelligence returns varying confidence scores, **Then** system logs confidence levels and extraction quality metrics
+3. **Given** completed batch processing, **When** learner views cost analysis, **Then** see per-document cost breakdown and recommendations for cost optimization
+4. **Given** logged extraction patterns, **When** learner analyzes quality, **Then** identify document types with low confidence as candidates for improved preprocessing
+5. **Given** cost tracking over time, **When** learner reviews cumulative metrics, **Then** understand total Document Intelligence expenses and usage patterns
 
 ---
 
 ### Edge Cases
 
-- **What happens when** uploaded PDF is corrupted or unreadable by all OCR tools?
+- **What happens when** uploaded PDF is corrupted or unreadable by Document Intelligence?
   - System logs error, marks document as "manual_review_required", does not block other documents in batch, and continues workflow with partial data flagged
   
 - **What happens when** MCP server is unreachable during credit lookup?
@@ -166,50 +165,49 @@ A learner wants to understand cost/performance tradeoffs by observing when the s
 **Document Processing**
 
 - **FR-001**: System MUST accept PDF uploads for pay stubs, bank statements, tax returns, and identification documents via notebook interface
-- **FR-002**: System MUST attempt Azure Document Intelligence extraction first using appropriate prebuilt models (pay stub, invoice, ID document models)
-- **FR-003**: System MUST automatically trigger GPT-4 Vision fallback when Document Intelligence confidence score <0.7 on critical fields (income, SSN, dates)
-- **FR-004**: System MUST normalize extracted field names and infer derived values (monthly income from annual) using GPT-4 text mode
-- **FR-005**: System MUST validate extracted data against consistency rules (net <= gross income, dates chronological, non-negative balances)
-- **FR-006**: System MUST return structured JSON output matching Pydantic schema with completeness score and tool attribution per field
-- **FR-007**: System MUST log all fallback cases (DI → Vision) with confidence scores and reasons for analysis
+- **FR-002**: System MUST use Azure Document Intelligence extraction using appropriate prebuilt models (pay stub, invoice, ID document models)
+- **FR-003**: System MUST normalize extracted field names and infer derived values (monthly income from annual) using GPT-4o text mode
+- **FR-004**: System MUST validate extracted data against consistency rules (net <= gross income, dates chronological, non-negative balances)
+- **FR-005**: System MUST return structured JSON output matching Pydantic schema with completeness score and confidence metrics per field
+- **FR-006**: System MUST log extraction results with confidence scores for quality analysis
 
 **Financial Risk Analysis**
 
-- **FR-008**: System MUST query mock credit database via MCP server using applicant SSN to retrieve credit score, payment history, utilization, accounts, derogatory marks, credit age
-- **FR-009**: System MUST calculate DTI ratio as (total monthly debt / gross monthly income) × 100
-- **FR-010**: System MUST calculate LTV ratio as (loan amount / property value) × 100
-- **FR-011**: System MUST calculate PTI ratio as (monthly loan payment / gross monthly income) × 100 using standard amortization formula
-- **FR-012**: System MUST prompt GPT-4 with calculated metrics and credit data to generate risk level (low/medium/high) with reasoning
-- **FR-013**: System MUST identify top 3 risk factors and top 3 mitigating factors in risk assessment
-- **FR-014**: System MUST visualize financial metrics (DTI, LTV, PTI) using Plotly interactive charts in notebook output
+- **FR-007**: System MUST query mock credit database via MCP server using applicant SSN to retrieve credit score, payment history, utilization, accounts, derogatory marks, credit age
+- **FR-008**: System MUST calculate DTI ratio as (total monthly debt / gross monthly income) × 100
+- **FR-009**: System MUST calculate LTV ratio as (loan amount / property value) × 100
+- **FR-010**: System MUST calculate PTI ratio as (monthly loan payment / gross monthly income) × 100 using standard amortization formula
+- **FR-011**: System MUST prompt GPT-4o with calculated metrics and credit data to generate risk level (low/medium/high) with reasoning
+- **FR-012**: System MUST identify top 3 risk factors and top 3 mitigating factors in risk assessment
+- **FR-013**: System MUST visualize financial metrics (DTI, LTV, PTI) using Plotly interactive charts in notebook output
 
 **Policy Compliance (RAG)**
 
-- **FR-015**: System MUST index lending policy documents by chunking text (500 token chunks), generating Ada-002 embeddings, and storing in Azure AI Search
-- **FR-016**: System MUST embed compliance queries using same Ada-002 model and perform cosine similarity search against indexed policies
-- **FR-017**: System MUST retrieve top 3 most relevant policy chunks and include as context in GPT-4 compliance checking prompt
-- **FR-018**: System MUST return compliance report citing specific policy sections when available
-- **FR-019**: System MUST acknowledge when no relevant policy found (low similarity scores) and avoid hallucinating policy requirements
+- **FR-014**: System MUST index lending policy documents by chunking text (500 token chunks), generating Ada-002 embeddings, and storing in Azure AI Search
+- **FR-015**: System MUST embed compliance queries using same Ada-002 model and perform cosine similarity search against indexed policies
+- **FR-016**: System MUST retrieve top 3 most relevant policy chunks and include as context in GPT-4o compliance checking prompt
+- **FR-017**: System MUST return compliance report citing specific policy sections when available
+- **FR-018**: System MUST acknowledge when no relevant policy found (low similarity scores) and avoid hallucinating policy requirements
 
 **Decision Making**
 
-- **FR-020**: System MUST aggregate outputs from document, risk, and compliance agents into unified ApplicationState object
-- **FR-021**: System MUST apply deterministic decision rules (e.g., auto-reject if DTI >43% AND credit_score <640)
-- **FR-022**: System MUST prompt GPT-4 for comprehensive decision analysis on borderline cases not matching clear rules
-- **FR-023**: System MUST calculate risk-adjusted interest rate based on credit score tiers and risk level
-- **FR-024**: System MUST return decision status (Approved, Rejected, Conditional, Pending) with confidence level
-- **FR-025**: System MUST generate plain-language explanation of decision factors using GPT-4, highlighting key approval/rejection reasons
+- **FR-019**: System MUST aggregate outputs from document, risk, and compliance agents into unified ApplicationState object
+- **FR-020**: System MUST apply deterministic decision rules (e.g., auto-reject if DTI >43% AND credit_score <640)
+- **FR-021**: System MUST prompt GPT-4o for comprehensive decision analysis on borderline cases not matching clear rules
+- **FR-022**: System MUST calculate risk-adjusted interest rate based on credit score tiers and risk level
+- **FR-023**: System MUST return decision status (Approved, Rejected, Conditional, Pending) with confidence level
+- **FR-024**: System MUST generate plain-language explanation of decision factors using GPT-4o, highlighting key approval/rejection reasons
 
 **Multi-Agent Orchestration**
 
-- **FR-026**: System MUST use LangGraph to define stateful workflow: Init → DocumentAgent → RiskAgent → ComplianceAgent → DecisionAgent → Complete
-- **FR-027**: System MUST persist ApplicationState across agent transitions, ensuring each agent receives outputs from previous agents
-- **FR-028**: System MUST implement error handling paths that transition to Error state on agent failure without executing downstream agents
-- **FR-029**: System MUST log execution time and output size per agent for performance monitoring
+- **FR-025**: System MUST use LangGraph to define stateful workflow: Init → DocumentAgent → RiskAgent → ComplianceAgent → DecisionAgent → Complete
+- **FR-026**: System MUST persist ApplicationState across agent transitions, ensuring each agent receives outputs from previous agents
+- **FR-027**: System MUST implement error handling paths that transition to Error state on agent failure without executing downstream agents
+- **FR-028**: System MUST log execution time and output size per agent for performance monitoring
 
 **MCP Server & Data Access**
 
-- **FR-030**: System MUST implement FastAPI MCP server with three connectors: file storage (read PDFs), credit database (query SQLite), application metadata (query SQLite)
+- **FR-029**: System MUST implement FastAPI MCP server with three connectors: file storage (read PDFs), credit database (query SQLite), application metadata (query SQLite)
 - **FR-031**: System MUST provide `/files/{filename}` endpoint returning document bytes from local filesystem
 - **FR-032**: System MUST provide `/credit/{ssn}` endpoint querying mock_credit_bureau.db and returning credit report
 - **FR-033**: System MUST provide `/application/{app_id}` endpoint querying database.sqlite for application metadata
@@ -247,15 +245,15 @@ A learner wants to understand cost/performance tradeoffs by observing when the s
 **Learning Outcomes (Primary Goal)**
 
 - **SC-001**: Learners can successfully process a loan application end-to-end (upload documents → receive decision) within 30 minutes in their first session, demonstrating all 4 agents working together
-- **SC-002**: Learners understand OCR cost optimization - can explain why Document Intelligence first / GPT-4 Vision fallback strategy saves 80-90% compared to Vision-only approach
-- **SC-003**: Learners can articulate how RAG improves accuracy - demonstrate by comparing GPT-4 responses with vs without policy context showing measurable increase in factual correctness
+- **SC-002**: Learners understand document extraction cost optimization - can explain Document Intelligence usage patterns and cost per document
+- **SC-003**: Learners can articulate how RAG improves accuracy - demonstrate by comparing GPT-4o responses with vs without policy context showing measurable increase in factual correctness
 - **SC-004**: Learners successfully modify agent prompts and observe different outcomes - change risk analysis prompt and see altered reasoning in 2+ test cases
 - **SC-005**: Learners complete all 7 notebook phases within 8 weeks following implementation guide, with each notebook building working components
 
 **System Performance**
 
 - **SC-006**: Document extraction completes in under 10 seconds per document for standard clean PDFs using Document Intelligence
-- **SC-007**: System processes 90%+ of standard documents (pay stubs, bank statements from major institutions) using Document Intelligence without Vision fallback
+- **SC-007**: System processes standard documents (pay stubs, bank statements from major institutions) reliably using Document Intelligence
 - **SC-008**: RAG semantic search retrieves at least 1 relevant policy chunk with >0.7 similarity score for 95% of compliance queries covered in indexed policies
 - **SC-009**: Complete multi-agent workflow (all 4 agents) processes a single application in under 60 seconds excluding document upload time
 - **SC-010**: System handles 10+ test applications in single notebook session without manual intervention or runtime errors
@@ -264,7 +262,7 @@ A learner wants to understand cost/performance tradeoffs by observing when the s
 
 - **SC-011**: Document extraction achieves 95%+ field accuracy on test dataset of 20+ clean sample documents compared to manually labeled ground truth
 - **SC-012**: Financial calculations (DTI, LTV, PTI) are mathematically correct within 0.1% tolerance on 100% of test cases
-- **SC-013**: GPT-4 risk reasoning includes all required sections (risk level, 3 risk factors, 3 mitigating factors) in 95%+ of assessments
+- **SC-013**: GPT-4o risk reasoning includes all required sections (risk level, 3 risk factors, 3 mitigating factors) in 95%+ of assessments
 - **SC-014**: Compliance reports cite actual policy text (not hallucinated) in 90%+ of cases when relevant policies exist in index
 
 **Experiment Reproducibility**
@@ -275,12 +273,12 @@ A learner wants to understand cost/performance tradeoffs by observing when the s
 
 **Developer Experience**
 
-- **SC-018**: Setup notebook completes all Azure connection tests (GPT-4, embeddings, Document Intelligence, AI Search) in under 5 minutes with valid credentials
-- **SC-019**: Error messages provide actionable guidance - 90%+ of configuration errors include specific fix instructions (e.g., "Set AZURE_OPENAI_ENDPOINT in .env")
-- **SC-020**: Notebook visualizations (Plotly charts, JSON viewers) render correctly in JupyterLab and VS Code notebook interface
-- **SC-021**: Sample test data enables learners to run every notebook without needing to source external documents
+- **SC-015**: Setup notebook completes all Azure connection tests (GPT-4o, embeddings, Document Intelligence, AI Search) in under 5 minutes with valid credentials
+- **SC-016**: Error messages provide actionable guidance - 90%+ of configuration errors include specific fix instructions (e.g., "Set AZURE_OPENAI_ENDPOINT in .env")
+- **SC-017**: Notebook visualizations (Plotly charts, JSON viewers) render correctly in JupyterLab and VS Code notebook interface
+- **SC-018**: Sample test data enables learners to run every notebook without needing to source external documents
 
 **Cost Efficiency (Research Budget)**
 
-- **SC-022**: Processing 100 sample applications costs <$20 using Document Intelligence primary / Vision fallback strategy
-- **SC-023**: System logs per-application cost breakdown enabling learners to project scaling costs accurately
+- **SC-019**: Processing 100 sample applications costs ~$12-18 using Document Intelligence extraction and GPT-4o reasoning
+- **SC-020**: System logs per-application cost breakdown enabling learners to project scaling costs accurately

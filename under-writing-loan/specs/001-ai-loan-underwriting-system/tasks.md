@@ -4,6 +4,8 @@
 **Input**: Design documents from `/specs/001-ai-loan-underwriting-system/`  
 **Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/mcp-server.yaml ✅, quickstart.md ✅
 
+**Total Tasks**: 99 (reduced from 100 - removed GPT-4 Vision fallback tasks)
+
 **Tests**: No test tasks included - feature specification does not request TDD approach. System validation occurs through interactive notebook execution.
 
 **Organization**: Tasks grouped by user story to enable independent implementation and testing of each story.
@@ -28,14 +30,14 @@ Single project structure:
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create project directory structure per plan.md (notebooks/, src/agents/, src/mcp/, src/rag/, data/, tests/)
-- [ ] T002 Initialize requirements.txt with all dependencies from plan.md (openai, langchain, langgraph, azure-ai-formrecognizer, azure-search-documents, fastapi, uvicorn, pydantic, mlflow, jupyter, plotly, pdfplumber, pytest)
-- [ ] T003 [P] Create .env.example with Azure credential template per quickstart.md (AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_DOCUMENT_INTELLIGENCE_*, AZURE_SEARCH_*)
-- [ ] T004 [P] Create README.md with project overview and quickstart link
-- [ ] T005 [P] Create .gitignore for Python project (venv/, .env, data/, __pycache__, .ipynb_checkpoints)
-- [ ] T006 Create src/config.py to load environment variables using python-dotenv per quickstart.md
-- [ ] T007 [P] Create src/__init__.py (empty package marker)
-- [ ] T008 [P] Create src/utils.py with shared helper functions (file I/O, JSON serialization)
+- [x] T001 Create project directory structure per plan.md (notebooks/, src/agents/, src/mcp/, src/rag/, data/, tests/)
+- [x] T002 Initialize requirements.txt with all dependencies from plan.md (openai, langchain, langgraph, azure-ai-formrecognizer, azure-search-documents, fastapi, uvicorn, pydantic, mlflow, jupyter, plotly, pdfplumber, pytest)
+- [x] T003 [P] Create .env.example with Azure credential template per quickstart.md (AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_DOCUMENT_INTELLIGENCE_*, AZURE_SEARCH_*)
+- [x] T004 [P] Create README.md with project overview and quickstart link
+- [x] T005 [P] Create .gitignore for Python project (venv/, .env, data/, __pycache__, .ipynb_checkpoints)
+- [x] T006 Create src/config.py to load environment variables using python-dotenv per quickstart.md
+- [x] T007 [P] Create src/__init__.py (empty package marker)
+- [x] T008 [P] Create src/utils.py with shared helper functions (file I/O, JSON serialization)
 
 ---
 
@@ -45,8 +47,8 @@ Single project structure:
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T009 Create src/models.py with all 8 Pydantic schemas from data-model.md (LoanApplication, ExtractedDocument, CreditReport, RiskAssessment, ComplianceReport, LendingDecision, ApplicationState, PolicyDocument)
-- [ ] T010 Create notebooks/00_setup_and_test.ipynb implementing quickstart.md Section 3 validation (Azure OpenAI connection test, Document Intelligence test, AI Search test, embeddings test)
+- [x] T009 Create src/models.py with all 8 Pydantic schemas from data-model.md (LoanApplication, ExtractedDocument, CreditReport, RiskAssessment, ComplianceReport, LendingDecision, ApplicationState, PolicyDocument)
+- [x] T010 Create notebooks/00_setup_and_test.ipynb implementing quickstart.md Section 3 validation (Azure OpenAI connection test, Document Intelligence test, AI Search test, embeddings test)
 - [ ] T011 Create data/mock_credit_bureau.db schema per contracts/mcp-server.yaml (credit_reports table with ssn, credit_score, payment_history, credit_utilization, accounts_open, derogatory_marks, credit_age_months)
 - [ ] T012 Create src/mcp/seed_data.py to populate mock_credit_bureau.db with 4 test profiles per quickstart.md (excellent 780, good 720, fair 670, poor 590)
 - [ ] T013 Create data/database.sqlite schema for application metadata per plan.md (applications table with application_id, status, created_at, updated_at, mlflow_run_id)
@@ -60,22 +62,20 @@ Single project structure:
 
 ## Phase 3: User Story 1 - Document Processing & Extraction (Priority: P1) 🎯 MVP
 
-**Goal**: Extract structured data from loan documents using hybrid OCR (Document Intelligence primary, GPT-4 Vision fallback)
+**Goal**: Extract structured data from loan documents using Azure Document Intelligence
 
-**Independent Test**: Upload pay stub PDF → system returns JSON with extracted fields (employer, income, dates) + confidence scores + tool attribution
+**Independent Test**: Upload pay stub PDF → system returns JSON with extracted fields (employer, income, dates) + confidence scores
 
 ### Implementation for User Story 1
 
 - [ ] T017 [P] [US1] Create src/agents/__init__.py (empty package marker)
-- [ ] T018 [P] [US1] Implement Azure Document Intelligence client wrapper in src/agents/document_agent.py::DocumentIntelligenceExtractor class (analyze_document method using prebuilt-invoice model per research.md decision)
-- [ ] T019 [P] [US1] Implement GPT-4 Vision fallback handler in src/agents/document_agent.py::VisionExtractor class (extract_from_image method with base64 encoding)
-- [ ] T020 [US1] Implement confidence-based routing logic in src/agents/document_agent.py::HybridOCRAgent class (uses DocumentIntelligence first, triggers Vision if confidence <0.7 per research.md)
-- [ ] T021 [US1] Implement GPT-4 text normalization in src/agents/document_agent.py::FieldNormalizer class (unify field names, calculate monthly from annual income per spec.md FR-004)
-- [ ] T022 [US1] Implement validation rules in src/agents/document_agent.py::DataValidator class (net <= gross, dates chronological, non-negative values per spec.md FR-005)
-- [ ] T023 [US1] Implement completeness scoring in src/agents/document_agent.py::CompletenessCalculator class (percentage of required fields extracted)
-- [ ] T024 [US1] Create notebooks/01_document_agent.ipynb demonstrating document upload, extraction, confidence scoring, fallback scenarios per spec.md acceptance scenario 1-5
-- [ ] T025 [US1] Add interactive JSON viewer in 01_document_agent.ipynb using ipywidgets to display ExtractedDocument outputs
-- [ ] T026 [US1] Implement cost logging in document_agent.py (track DI vs Vision usage, log per-document cost per spec.md FR-007)
+- [ ] T018 [US1] Implement Azure Document Intelligence client wrapper in src/agents/document_agent.py::DocumentIntelligenceExtractor class (analyze_document method using prebuilt-invoice model per research.md decision)
+- [ ] T019 [US1] Implement GPT-4o text normalization in src/agents/document_agent.py::FieldNormalizer class (unify field names, calculate monthly from annual income per spec.md FR-004)
+- [ ] T020 [US1] Implement validation rules in src/agents/document_agent.py::DataValidator class (net <= gross, dates chronological, non-negative values per spec.md FR-005)
+- [ ] T021 [US1] Implement completeness scoring in src/agents/document_agent.py::CompletenessCalculator class (percentage of required fields extracted)
+- [ ] T022 [US1] Create notebooks/01_document_agent.ipynb demonstrating document upload, extraction, confidence scoring per spec.md acceptance scenarios
+- [ ] T023 [US1] Add interactive JSON viewer in 01_document_agent.ipynb using ipywidgets to display ExtractedDocument outputs
+- [ ] T024 [US1] Implement cost logging in document_agent.py (track Document Intelligence usage, log per-document cost per spec.md FR-007)
 
 **Checkpoint**: Document Agent fully functional - can extract structured data from PDFs independently
 
@@ -89,19 +89,19 @@ Single project structure:
 
 ### Implementation for User Story 2
 
-- [ ] T027 [P] [US2] Create src/mcp/__init__.py (empty package marker)
-- [ ] T028 [P] [US2] Create src/mcp/connectors/__init__.py (empty package marker)
-- [ ] T029 [US2] Implement FastAPI MCP server in src/mcp/server.py with 5 endpoints per contracts/mcp-server.yaml (GET /files/{filename}, GET /credit/{ssn}, GET /application/{app_id}, POST /admin/seed_credit_db, GET /health)
-- [ ] T030 [P] [US2] Implement file connector in src/mcp/connectors/file_connector.py (read PDFs from data/applications/ directory with path validation)
-- [ ] T031 [P] [US2] Implement credit connector in src/mcp/connectors/credit_connector.py (query mock_credit_bureau.db, return CreditReport schema per data-model.md)
-- [ ] T032 [US2] Implement DTI calculator in src/agents/risk_agent.py::FinancialCalculator class (DTI = monthly_debt / monthly_income × 100 per spec.md FR-009)
-- [ ] T033 [US2] Implement LTV calculator in src/agents/risk_agent.py::FinancialCalculator class (LTV = loan_amount / property_value × 100 per spec.md FR-010)
-- [ ] T034 [US2] Implement PTI calculator in src/agents/risk_agent.py::FinancialCalculator class (PTI = monthly_payment / monthly_income × 100 using amortization formula per spec.md FR-011)
-- [ ] T035 [US2] Implement GPT-4 risk analysis prompt in src/agents/risk_agent.py::RiskAnalyzer class (prompt with calculated metrics + credit data, expect risk_level + 3 risk_factors + 3 mitigating_factors per spec.md FR-012-013)
-- [ ] T036 [US2] Implement Plotly visualization generator in src/agents/risk_agent.py::RiskVisualizer class (bar chart for DTI/LTV/PTI with threshold lines per spec.md FR-014)
-- [ ] T037 [US2] Create notebooks/02_risk_agent.ipynb demonstrating MCP credit query, financial calculations, GPT-4 risk reasoning, interactive charts per spec.md acceptance scenario 1-5
-- [ ] T038 [US2] Add side-by-side comparison in 02_risk_agent.ipynb for excellent (780) vs poor (620) credit profiles showing different risk assessments
-- [ ] T039 [US2] Implement MCP server startup script in src/mcp/run_server.sh for easy launch (uvicorn command with --reload flag)
+- [ ] T025 [US2] Create src/mcp/__init__.py (empty package marker)
+- [ ] T026 [P] [US2] Create src/mcp/connectors/__init__.py (empty package marker)
+- [ ] T027 [US2] Implement FastAPI MCP server in src/mcp/server.py with 5 endpoints per contracts/mcp-server.yaml (GET /files/{filename}, GET /credit/{ssn}, GET /application/{app_id}, POST /admin/seed_credit_db, GET /health)
+- [ ] T028 [P] [US2] Implement file connector in src/mcp/connectors/file_connector.py (read PDFs from data/applications/ directory with path validation)
+- [ ] T029 [P] [US2] Implement credit connector in src/mcp/connectors/credit_connector.py (query mock_credit_bureau.db, return CreditReport schema per data-model.md)
+- [ ] T030 [US2] Implement DTI calculator in src/agents/risk_agent.py::FinancialCalculator class (DTI = monthly_debt / monthly_income × 100 per spec.md FR-009)
+- [ ] T031 [US2] Implement LTV calculator in src/agents/risk_agent.py::FinancialCalculator class (LTV = loan_amount / property_value × 100 per spec.md FR-010)
+- [ ] T032 [US2] Implement PTI calculator in src/agents/risk_agent.py::FinancialCalculator class (PTI = monthly_payment / monthly_income × 100 using amortization formula per spec.md FR-011)
+- [ ] T033 [US2] Implement GPT-4o risk analysis prompt in src/agents/risk_agent.py::RiskAnalyzer class (prompt with calculated metrics + credit data, expect risk_level + 3 risk_factors + 3 mitigating_factors per spec.md FR-012-013)
+- [ ] T034 [US2] Implement Plotly visualization generator in src/agents/risk_agent.py::RiskVisualizer class (bar chart for DTI/LTV/PTI with threshold lines per spec.md FR-014)
+- [ ] T035 [US2] Create notebooks/02_risk_agent.ipynb demonstrating MCP credit query, financial calculations, GPT-4o risk reasoning, interactive charts per spec.md acceptance scenario 1-5
+- [ ] T036 [US2] Add side-by-side comparison in 02_risk_agent.ipynb for excellent (780) vs poor (620) credit profiles showing different risk assessments
+- [ ] T037 [US2] Implement MCP server startup script in src/mcp/run_server.sh for easy launch (uvicorn command with --reload flag)
 
 **Checkpoint**: Risk Agent fully functional - can analyze creditworthiness independently using MCP data
 
@@ -115,15 +115,15 @@ Single project structure:
 
 ### Implementation for User Story 3
 
-- [ ] T040 [P] [US3] Create src/rag/__init__.py (empty package marker)
-- [ ] T041 [US3] Implement Azure AI Search index creation in src/rag/indexer.py::PolicyIndexer class (create lending-policies-index with 1536-dim vector field per research.md decision)
-- [ ] T042 [US3] Implement document chunking in src/rag/indexer.py::DocumentChunker class (500 token chunks with 50 token overlap per research.md decision)
-- [ ] T043 [US3] Implement Ada-002 embedding generator in src/rag/embeddings.py::EmbeddingGenerator class (batch embed chunks using Azure OpenAI text-embedding-ada-002 per spec.md FR-015)
-- [ ] T044 [US3] Implement policy upload and indexing pipeline in src/rag/indexer.py::PolicyIndexer.index_documents method (chunk → embed → upload to Azure AI Search per spec.md FR-015)
-- [ ] T045 [US3] Implement semantic search retriever in src/rag/retriever.py::PolicyRetriever class (embed query, cosine similarity search, return top-3 chunks per spec.md FR-016-017)
-- [ ] T046 [US3] Create notebooks/03_rag_system.ipynb demonstrating offline indexing of 5 policy documents, query embedding, similarity search, chunk retrieval per spec.md acceptance scenario 1-5
-- [ ] T047 [US3] Add interactive search widget in 03_rag_system.ipynb (text input for queries, display retrieved chunks with similarity scores)
-- [ ] T048 [US3] Implement no-result handling in retriever per spec.md edge case 3 (return empty list if all similarity scores <0.5)
+- [ ] T038 [P] [US3] Create src/rag/__init__.py (empty package marker)
+- [ ] T039 [US3] Implement Azure AI Search index creation in src/rag/indexer.py::PolicyIndexer class (create lending-policies-index with 1536-dim vector field per research.md decision)
+- [ ] T040 [US3] Implement document chunking in src/rag/indexer.py::DocumentChunker class (500 token chunks with 50 token overlap per research.md decision)
+- [ ] T041 [US3] Implement Ada-002 embedding generator in src/rag/embeddings.py::EmbeddingGenerator class (batch embed chunks using Azure OpenAI text-embedding-ada-002 per spec.md FR-015)
+- [ ] T042 [US3] Implement policy upload and indexing pipeline in src/rag/indexer.py::PolicyIndexer.index_documents method (chunk → embed → upload to Azure AI Search per spec.md FR-015)
+- [ ] T043 [US3] Implement semantic search retriever in src/rag/retriever.py::PolicyRetriever class (embed query, cosine similarity search, return top-3 chunks per spec.md FR-016-017)
+- [ ] T044 [US3] Create notebooks/03_rag_system.ipynb demonstrating offline indexing of 5 policy documents, query embedding, similarity search, chunk retrieval per spec.md acceptance scenario 1-5
+- [ ] T045 [US3] Add interactive search widget in 03_rag_system.ipynb (text input for queries, display retrieved chunks with similarity scores)
+- [ ] T046 [US3] Implement no-result handling in retriever per spec.md edge case 3 (return empty list if all similarity scores <0.5)
 
 **Checkpoint**: RAG system fully functional - can retrieve relevant policy sections independently
 
@@ -137,16 +137,16 @@ Single project structure:
 
 ### Implementation for User Story 4
 
-- [ ] T049 [P] [US4] Implement compliance agent in src/agents/compliance_agent.py::ComplianceAgent class (integrate PolicyRetriever, prompt GPT-4 with retrieved context per spec.md FR-018)
-- [ ] T050 [US4] Implement policy citation extraction in src/agents/compliance_agent.py::CitationExtractor class (parse GPT-4 response for policy references)
-- [ ] T051 [US4] Create notebooks/04_compliance_agent.ipynb demonstrating RAG-powered compliance checking, policy citations, compliance status determination per spec.md acceptance scenario 1-5
-- [ ] T052 [US4] Implement decision rules matrix in src/agents/decision_agent.py::DecisionRules class (auto-reject if DTI >43% AND credit_score <640 per spec.md FR-021)
-- [ ] T053 [US4] Implement state aggregator in src/agents/decision_agent.py::StateAggregator class (combine ExtractedDocument + RiskAssessment + ComplianceReport into single dict per spec.md FR-020)
-- [ ] T054 [US4] Implement GPT-4 decision analysis prompt in src/agents/decision_agent.py::DecisionAnalyzer class (prompt with aggregated state for borderline cases per spec.md FR-022)
-- [ ] T055 [US4] Implement risk-adjusted rate calculator in src/agents/decision_agent.py::RateCalculator class (base rate + credit_score_adjustment + risk_level_premium per spec.md FR-023)
-- [ ] T056 [US4] Implement explanation generator in src/agents/decision_agent.py::ExplanationGenerator class (GPT-4 prompt for plain-language decision summary per spec.md FR-025)
-- [ ] T057 [US4] Create notebooks/05_decision_agent.ipynb demonstrating decision rule application, GPT-4 borderline analysis, rate calculation, explanation generation per spec.md acceptance scenario 1-5
-- [ ] T058 [US4] Add decision confidence indicator in 05_decision_agent.ipynb (color-coded decision status: green=Approved, yellow=Conditional, red=Rejected)
+- [ ] T047 [P] [US4] Implement compliance agent in src/agents/compliance_agent.py::ComplianceAgent class (integrate PolicyRetriever, prompt GPT-4o with retrieved context per spec.md FR-018)
+- [ ] T048 [US4] Implement policy citation extraction in src/agents/compliance_agent.py::CitationExtractor class (parse GPT-4o response for policy references)
+- [ ] T049 [US4] Create notebooks/04_compliance_agent.ipynb demonstrating RAG-powered compliance checking, policy citations, compliance status determination per spec.md acceptance scenario 1-5
+- [ ] T050 [US4] Implement decision rules matrix in src/agents/decision_agent.py::DecisionRules class (auto-reject if DTI >43% AND credit_score <640 per spec.md FR-021)
+- [ ] T051 [US4] Implement state aggregator in src/agents/decision_agent.py::StateAggregator class (combine ExtractedDocument + RiskAssessment + ComplianceReport into single dict per spec.md FR-020)
+- [ ] T052 [US4] Implement GPT-4o decision analysis prompt in src/agents/decision_agent.py::DecisionAnalyzer class (prompt with aggregated state for borderline cases per spec.md FR-022)
+- [ ] T053 [US4] Implement risk-adjusted rate calculator in src/agents/decision_agent.py::RateCalculator class (base rate + credit_score_adjustment + risk_level_premium per spec.md FR-023)
+- [ ] T054 [US4] Implement explanation generator in src/agents/decision_agent.py::ExplanationGenerator class (GPT-4o prompt for plain-language decision summary per spec.md FR-025)
+- [ ] T055 [US4] Create notebooks/05_decision_agent.ipynb demonstrating decision rule application, GPT-4o borderline analysis, rate calculation, explanation generation per spec.md acceptance scenario 1-5
+- [ ] T056 [US4] Add decision confidence indicator in 05_decision_agent.ipynb (color-coded decision status: green=Approved, yellow=Conditional, red=Rejected)
 
 **Checkpoint**: Decision Agent fully functional - can make final lending decisions independently with transparent reasoning
 
@@ -200,23 +200,22 @@ Single project structure:
 
 ---
 
-## Phase 9: User Story 7 - Cost Optimization & Fallback Strategy (Priority: P3)
+## Phase 9: User Story 7 - Cost Optimization (Priority: P3)
 
-**Goal**: Demonstrate cost/performance tradeoffs through Document Intelligence vs GPT-4 Vision fallback analysis
+**Goal**: Demonstrate cost tracking and analysis for Document Intelligence extraction
 
-**Independent Test**: Process 10 documents (mix quality) → 9 use DI only, 1 triggers Vision → cost breakdown shows 80-90% savings vs Vision-only
+**Independent Test**: Process 10 documents → track Document Intelligence costs → cost breakdown shows per-document expenses
 
 ### Implementation for User Story 7
 
-- [ ] T081 [US7] Implement cost tracker in src/agents/document_agent.py::CostTracker class (log DI cost $0.001/page, Vision cost $0.02/image, GPT-4 text cost per token per research.md decision)
-- [ ] T082 [US7] Enhance fallback logging in HybridOCRAgent (record confidence trigger reason: "low_confidence_0.5_on_gross_income" per spec.md acceptance scenario 2)
-- [ ] T083 [US7] Implement conflict resolution in document_agent.py::ConflictResolver class (GPT-4 adjudicates when DI and Vision return different values per spec.md acceptance scenario 3)
-- [ ] T084 [US7] Create cost analysis notebook section in 01_document_agent.ipynb (batch process 10 documents, display per-doc cost breakdown, total savings vs Vision-only per spec.md acceptance scenario 4)
-- [ ] T085 [US7] Implement fallback pattern analyzer in src/utils.py::FallbackAnalyzer class (identify document types consistently triggering Vision per spec.md acceptance scenario 5)
-- [ ] T086 [US7] Add cost visualization in 01_document_agent.ipynb (Plotly stacked bar chart: DI cost vs Vision cost per document)
-- [ ] T087 [US7] Create cost optimization recommendations section in 01_document_agent.ipynb (suggest custom model training for frequent Vision fallback types)
+- [ ] T081 [US7] Implement cost tracker in src/agents/document_agent.py::CostTracker class (log Document Intelligence cost $0.001/page, GPT-4o text cost per token per research.md decision)
+- [ ] T082 [US7] Enhance extraction logging in DocumentAgent (record confidence scores and extraction quality metrics per spec.md acceptance scenarios)
+- [ ] T083 [US7] Create cost analysis notebook section in 01_document_agent.ipynb (batch process 10 documents, display per-doc cost breakdown per spec.md acceptance scenarios)
+- [ ] T084 [US7] Implement extraction quality analyzer in src/utils.py::DocumentAnalyzer class (track extraction patterns and confidence levels by document type per spec.md acceptance scenarios)
+- [ ] T085 [US7] Add cost visualization in 01_document_agent.ipynb (Plotly bar chart: Document Intelligence cost per document)
+- [ ] T086 [US7] Create cost optimization recommendations section in 01_document_agent.ipynb (best practices for document quality and preprocessing)
 
-**Checkpoint**: Cost optimization fully documented - learners understand economic tradeoffs
+**Checkpoint**: Cost tracking fully documented - learners understand economic considerations
 
 ---
 
@@ -224,19 +223,19 @@ Single project structure:
 
 **Purpose**: Final improvements affecting multiple user stories
 
-- [ ] T088 [P] Create comprehensive README.md with architecture diagram, quickstart steps, notebook sequence, learning objectives
-- [ ] T089 [P] Update docs/SIMPLIFIED_ARCHITECTURE.md with implementation details and actual performance metrics from testing
-- [ ] T090 [P] Create docs/IMPLEMENTATION_GUIDE.md with phase-by-phase walkthrough linking to specific notebooks and code modules
-- [ ] T091 [P] Create docs/NOTEBOOK_APPROACH.md explaining notebook-first pedagogy and how to modify for custom experiments
-- [ ] T092 Add error handling improvements across all agents (retry logic for Azure API timeouts, graceful degradation for missing data per spec.md edge cases)
-- [ ] T093 Implement input validation in all agents (validate Pydantic models at entry/exit, log validation errors)
-- [ ] T094 Add logging configuration in src/config.py (structured logging with timestamps, severity levels, log files)
-- [ ] T095 [P] Create tests/test_models.py for Pydantic model validation (test all 8 schemas with valid/invalid inputs per data-model.md)
-- [ ] T096 [P] Create tests/test_calculations.py for financial formulas (DTI/LTV/PTI calculations with edge cases per spec.md FR-009-011)
-- [ ] T097 [P] Create tests/test_mcp_server.py for MCP API endpoints (test all 5 endpoints with FastAPI TestClient per contracts/mcp-server.yaml)
-- [ ] T098 Run quickstart.md validation end-to-end (fresh environment setup, verify all notebooks execute successfully)
-- [ ] T099 Add performance profiling in orchestrator.py (identify bottlenecks, log slowest agents)
-- [ ] T100 Create troubleshooting guide in docs/TROUBLESHOOTING.md (common errors, Azure quota issues, credential problems)
+- [ ] T087 [P] Create comprehensive README.md with architecture diagram, quickstart steps, notebook sequence, learning objectives
+- [ ] T088 [P] Update docs/SIMPLIFIED_ARCHITECTURE.md with implementation details and actual performance metrics from testing
+- [ ] T089 [P] Create docs/IMPLEMENTATION_GUIDE.md with phase-by-phase walkthrough linking to specific notebooks and code modules
+- [ ] T090 [P] Create docs/NOTEBOOK_APPROACH.md explaining notebook-first pedagogy and how to modify for custom experiments
+- [ ] T091 Add error handling improvements across all agents (retry logic for Azure API timeouts, graceful degradation for missing data per spec.md edge cases)
+- [ ] T092 Implement input validation in all agents (validate Pydantic models at entry/exit, log validation errors)
+- [ ] T093 Add logging configuration in src/config.py (structured logging with timestamps, severity levels, log files)
+- [ ] T094 [P] Create tests/test_models.py for Pydantic model validation (test all 8 schemas with valid/invalid inputs per data-model.md)
+- [ ] T095 [P] Create tests/test_calculations.py for financial formulas (DTI/LTV/PTI calculations with edge cases per spec.md FR-009-011)
+- [ ] T096 [P] Create tests/test_mcp_server.py for MCP API endpoints (test all 5 endpoints with FastAPI TestClient per contracts/mcp-server.yaml)
+- [ ] T097 Run quickstart.md validation end-to-end (fresh environment setup, verify all notebooks execute successfully)
+- [ ] T098 Add performance profiling in orchestrator.py (identify bottlenecks, log slowest agents)
+- [ ] T099 Create troubleshooting guide in docs/TROUBLESHOOTING.md (common errors, Azure quota issues, credential problems)
 
 ---
 
@@ -278,28 +277,28 @@ US7 (Cost Optimization) enhances US1 (can be implemented in parallel or after US
 ### Within Each User Story
 
 **US1 (Document Agent)**:
-1. Azure DI client (T018) and Vision client (T019) in parallel
-2. Hybrid routing logic (T020) depends on both clients
-3. Normalization (T021) and validation (T022) depend on routing logic
-4. Notebook (T024) depends on all agent logic complete
+1. Azure Document Intelligence client (T018)
+2. Normalization (T019) and validation (T020) depend on client
+3. Completeness scoring (T021) depends on validation
+4. Notebook (T022) depends on all agent logic complete
 
 **US2 (Risk Agent)**:
-1. MCP server (T029) and connectors (T030-T031) can develop in parallel
-2. Calculators (T032-T034) independent of MCP (can run parallel)
-3. GPT-4 risk analysis (T035) depends on calculators
-4. Notebook (T037) depends on all components
+1. MCP server (T027) and connectors (T028-T029) can develop in parallel
+2. Calculators (T030-T032) independent of MCP (can run parallel)
+3. GPT-4o risk analysis (T033) depends on calculators
+4. Notebook (T035) depends on all components
 
 **US3 (RAG System)**:
-1. Indexer (T041), chunker (T042), embeddings (T043) develop together
-2. Indexing pipeline (T044) depends on all three
-3. Retriever (T045) depends on index existing
-4. Notebook (T046) depends on retriever
+1. Indexer (T039), chunker (T040), embeddings (T041) develop together
+2. Indexing pipeline (T042) depends on all three
+3. Retriever (T043) depends on index existing
+4. Notebook (T044) depends on retriever
 
 **US4 (Decision Agent)**:
-1. Compliance agent (T049-T051) depends on US3 complete
-2. Decision rules (T052) and aggregator (T053) independent (parallel)
-3. Decision analysis (T054-T056) depends on rules + aggregator
-4. Notebook (T057) depends on all decision logic
+1. Compliance agent (T047-T049) depends on US3 complete
+2. Decision rules (T050) and aggregator (T051) independent (parallel)
+3. Decision analysis (T052-T054) depends on rules + aggregator
+4. Notebook (T055) depends on all decision logic
 
 **US5 (Orchestration)**:
 1. State definition (T059) first
@@ -315,9 +314,8 @@ US7 (Cost Optimization) enhances US1 (can be implemented in parallel or after US
 4. Notebook (T077) depends on all logging integrated
 
 **US7 (Cost Optimization)**:
-1. Cost tracker (T081) and fallback logging (T082) in parallel
-2. Conflict resolver (T083) independent
-3. Analysis notebook sections (T084-T087) after tracking implemented
+1. Cost tracker (T081) and extraction logging (T082) in parallel
+2. Analysis notebook sections (T083-T086) after tracking implemented
 
 ### Parallel Opportunities
 
