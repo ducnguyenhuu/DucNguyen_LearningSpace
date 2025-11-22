@@ -49,9 +49,9 @@ Single project structure:
 
 - [x] T009 Create src/models.py with all 8 Pydantic schemas from data-model.md (LoanApplication, ExtractedDocument, CreditReport, RiskAssessment, ComplianceReport, LendingDecision, ApplicationState, PolicyDocument)
 - [x] T010 Create notebooks/00_setup_and_test.ipynb implementing quickstart.md Section 3 validation (Azure OpenAI connection test, Document Intelligence test, AI Search test, embeddings test)
-- [ ] T011 Create data/mock_credit_bureau.db schema per contracts/mcp-server.yaml (credit_reports table with ssn, credit_score, payment_history, credit_utilization, accounts_open, derogatory_marks, credit_age_months)
-- [ ] T012 Create src/mcp/seed_data.py to populate mock_credit_bureau.db with 4 test profiles per quickstart.md (excellent 780, good 720, fair 670, poor 590)
-- [ ] T013 Create data/database.sqlite schema for application metadata per plan.md (applications table with application_id, status, created_at, updated_at, mlflow_run_id)
+- [x] T011 Create data/mock_credit_bureau.db schema per contracts/mcp-server.yaml (credit_reports table with ssn, credit_score, payment_history, credit_utilization, accounts_open, derogatory_marks, credit_age_months)
+- [x] T012 Create src/mcp/seed_data.py to populate mock_credit_bureau.db with 4 test profiles per quickstart.md (excellent 780, good 720, fair 670, poor 590)
+- [x] T013 Create data/database.db schema for application metadata per plan.md (applications table with application_id, status, created_at, updated_at, mlflow_run_id)
 - [ ] T014 Create tests/conftest.py with pytest fixtures (sample LoanApplication, mock Azure clients, temp directories)
 - [ ] T015 [P] Create tests/sample_applications/ directory with 4+ test PDFs per plan.md (pay_stub_clean.pdf, pay_stub_scanned.pdf, bank_statement.pdf, drivers_license.pdf)
 - [ ] T016 [P] Create data/policies/ with 5 sample lending policy documents per spec.md FR-015 (underwriting_standards.pdf, credit_requirements.pdf, income_verification.pdf, property_guidelines.pdf, compliance_rules.pdf)
