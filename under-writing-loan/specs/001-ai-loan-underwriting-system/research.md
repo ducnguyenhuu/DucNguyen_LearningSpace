@@ -38,70 +38,65 @@ Azure Document Intelligence (formerly Form Recognizer) offers several prebuilt m
 2. **Bank statements → Invoice model**: Handles tables and summary sections well
 3. **Tax returns → Tax W-2 model**: Purpose-built for US tax forms
 4. **IDs → ID Document model**: Specialized for driver's licenses, passports
-5. **Custom documents → Read model + GPT-4**: Extract text then structured extraction via LLM
+5. **Custom documents → Read model + GPT-4 text**: Extract text then structured extraction via LLM
 
-**Fallback Trigger**: If any field confidence < 0.7, escalate to GPT-4 Vision
+**No Vision Fallback**: System uses Document Intelligence only, with GPT-4 text mode for normalization
 
 **Rationale**:
 - Invoice model versatile for financial documents despite "pay stub" not being explicit use case
-- Confidence thresholds validated through Azure documentation and community examples
 - Purpose-built models (Tax, ID) have highest accuracy - use when available
-- Read model provides clean text for GPT-4 when structure doesn't fit prebuilt models
+- Read model provides clean text for GPT-4 text mode when structure doesn't fit prebuilt models
+- Document Intelligence provides structured extraction with confidence scores for quality assessment
+- GPT-4 text mode handles field normalization and validation (separate from extraction)
 
 **Alternatives Considered**:
 - ❌ **Custom model training**: Requires labeled dataset (200+ documents), adds complexity, doesn't teach prebuilt model usage
-- ❌ **GPT-4 Vision only**: 10-20x more expensive, doesn't teach cost optimization strategies
+- ❌ **GPT-4 Vision for extraction**: 10-20x more expensive, unnecessary for digital PDFs with Document Intelligence
 - ❌ **Open-source OCR (Tesseract)**: Lower quality, no structured extraction, doesn't demonstrate Azure ecosystem
 
 ---
 
-## 2. GPT-4 Vision vs Document Intelligence Cost Analysis
+## 2. Document Intelligence Cost Analysis
 
-**Research Question**: Exact pricing, when to use each tool, optimal fallback threshold?
+**Research Question**: Cost model and processing expectations for educational use?
 
-### Cost Comparison (as of Nov 2025)
+### Cost Analysis (as of Nov 2025)
 
-| Service | Pricing Model | Cost per Document | Processing Speed | Best For |
-|---------|---------------|-------------------|------------------|----------|
-| **Document Intelligence** | Per page analyzed | ~$0.001-0.0015 per page (prebuilt models) | 2-5 seconds | Clean digital PDFs, standard layouts |
-| **GPT-4 Vision** | Per image token | ~$0.01-0.03 per image (varies by resolution) | 5-10 seconds | Scanned images, complex layouts, ambiguous structure |
-| **GPT-4 Text (normalization)** | Per token | ~$0.0001 per 1K tokens (cheap) | 1-2 seconds | Field name unification, validation |
+| Service | Pricing Model | Cost per Document | Processing Speed | Usage |
+|---------|---------------|-------------------|------------------|-------|
+| **Document Intelligence** | Per page analyzed | ~$0.001-0.0015 per page (prebuilt models) | 2-5 seconds | All document extraction |
+| **GPT-4o Text (normalization)** | Per token | ~$0.0001 per 1K tokens | 1-2 seconds | Field name unification, validation, derived calculations |
 
 **Free Tier Allowances**:
 - Document Intelligence: 500 pages/month free (first month), then pay-as-you-go
 - Azure OpenAI: No free tier - pay per token from day 1
 
-**100 Application Processing Estimate**:
-- Scenario A (DI-first, 90% success): $0.10 (DI) + $3.00 (Vision fallback 10%) + $0.50 (GPT-4 text) = **$3.60**
-- Scenario B (Vision-only): $25.00 (Vision) + $0.50 (GPT-4 text) = **$25.50**
-- **Savings: 85%** with hybrid approach
+**100 Application Processing Estimate** (avg 2 pages per application):
+- Document Intelligence: 200 pages × $0.0015 = **$0.30**
+- GPT-4o text normalization: 100 applications × $0.005 = **$0.50**
+- **Total: ~$0.80 for 100 applications**
 
 ### Decision
 
-**Hybrid Strategy**:
-1. **Primary**: Azure Document Intelligence for all documents (attempt first)
-2. **Fallback**: GPT-4 Vision when:
-   - Document Intelligence confidence < **0.7** on critical fields (income, SSN, dates)
-   - Document type unsupported by prebuilt models (custom forms)
-   - Scanned/photographed image (no text layer detected by pdfplumber)
-3. **Always**: GPT-4 text mode for normalization and validation (cheap, fast)
+**Extraction Strategy**:
+1. **Primary**: Azure Document Intelligence for all document extraction
+2. **Normalization**: GPT-4o text mode for field standardization and derived calculations
+3. **No Vision fallback**: Not needed for digital PDFs with Document Intelligence
 
-**Confidence Threshold Rationale**:
-- 0.7 chosen based on Azure best practices and testing
-- Above 0.7: Generally accurate, minor errors acceptable for learning
-- Below 0.7: Indicates ambiguity - worth Vision cost to improve quality
-- Critical fields only: Name, income amounts, SSN, dates (not every field)
+**Confidence Handling**:
+- Log confidence scores for quality analysis
+- Flag low-confidence extractions (<0.7) for manual review
+- Use confidence metrics to identify document types needing preprocessing
 
-**Logging Strategy**:
-- Log every Document Intelligence → Vision fallback with reason
-- Track per-document cost breakdown in MLflow
-- Learners can analyze patterns: which document types need custom models
+**Cost Tracking**:
+- Track per-document Document Intelligence cost
+- Log GPT-4o token usage for normalization
+- Record extraction quality metrics for cost/quality analysis
 
 **Alternatives Considered**:
-- ❌ **Lower threshold (0.5)**: More Vision usage, higher cost, diminishing returns
-- ❌ **Higher threshold (0.8)**: More fallbacks than needed, unnecessarily expensive
-- ❌ **No fallback**: Fails on edge cases, doesn't teach resilient system design
-- ❌ **Always parallel (DI + Vision)**: 2x cost, no learning value in redundancy
+- ❌ **GPT-4 Vision primary**: 20x more expensive ($0.01-0.03 per page), unnecessary for digital PDFs
+- ❌ **No confidence tracking**: Misses opportunity to analyze extraction quality patterns
+- ❌ **Manual extraction**: Defeats purpose of automation, not scalable
 
 ---
 
@@ -529,8 +524,8 @@ functions = [{
 
 | Decision Area | Choice | Primary Rationale |
 |---------------|--------|-------------------|
-| **OCR Primary Tool** | Azure Document Intelligence (Invoice/Tax/ID models) | Cost-effective ($0.001/page), structured extraction, 90% success rate |
-| **OCR Fallback** | GPT-4 Vision (confidence <0.7 threshold) | Handles edge cases, 10x cost only for 10% of documents |
+| **Document Extraction** | Azure Document Intelligence (Invoice/Tax/ID models) | Cost-effective ($0.001/page), structured extraction, confidence scoring |
+| **Field Normalization** | GPT-4o Text Mode | Cheap ($0.0001/1K tokens), fast, handles field standardization and derived calculations |
 | **State Management** | LangGraph with TypedDict ApplicationState | Simple, functional, leverages framework's strengths |
 | **Vector Database** | Azure AI Search Free Tier (hybrid search) | Sufficient capacity, no cost, teaches Azure ecosystem |
 | **Experiment Tracking** | MLflow (SQLite + local artifacts) | Zero-config, industry standard, rich comparison UI |
@@ -544,9 +539,9 @@ All decisions prioritize **learning value**, **cost-effectiveness**, and **simpl
 
 ## Open Questions / Future Research
 
-1. **Custom Document Intelligence models**: If 20+ applications processed, analyze fallback patterns - worth training custom model?
+1. **Custom Document Intelligence models**: If extraction quality issues arise, analyze confidence patterns - worth training custom models for specific document types?
 2. **Prompt versioning**: Should prompts be in separate config files (YAML) or inline in notebooks for transparency?
 3. **Multi-document applications**: Current design assumes 1-2 docs per app - how to scale to 10+ documents per applicant?
-4. **GPT-4-Turbo vs GPT-4**: Cost/quality tradeoff for non-critical agents (risk/compliance) - worth testing?
+4. **GPT-4o vs GPT-4o-mini**: Cost/quality tradeoff for normalization and validation - worth testing cheaper model?
 
 These can be revisited during implementation based on learner needs and observed patterns.

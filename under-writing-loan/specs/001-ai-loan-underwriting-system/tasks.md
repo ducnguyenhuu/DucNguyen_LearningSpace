@@ -52,9 +52,9 @@ Single project structure:
 - [x] T011 Create data/mock_credit_bureau.db schema per contracts/mcp-server.yaml (credit_reports table with ssn, credit_score, payment_history, credit_utilization, accounts_open, derogatory_marks, credit_age_months)
 - [x] T012 Create src/mcp/seed_data.py to populate mock_credit_bureau.db with 4 test profiles per quickstart.md (excellent 780, good 720, fair 670, poor 590)
 - [x] T013 Create data/database.db schema for application metadata per plan.md (applications table with application_id, status, created_at, updated_at, mlflow_run_id)
-- [ ] T014 Create tests/conftest.py with pytest fixtures (sample LoanApplication, mock Azure clients, temp directories)
-- [ ] T015 [P] Create tests/sample_applications/ directory with 4+ test PDFs per plan.md (pay_stub_clean.pdf, pay_stub_scanned.pdf, bank_statement.pdf, drivers_license.pdf)
-- [ ] T016 [P] Create data/policies/ with 5 sample lending policy documents per spec.md FR-015 (underwriting_standards.pdf, credit_requirements.pdf, income_verification.pdf, property_guidelines.pdf, compliance_rules.pdf)
+- [x] T014 Create tests/conftest.py with pytest fixtures (sample LoanApplication, mock Azure clients, temp directories)
+- [x] T015 [P] Create tests/sample_applications/ directory with 4+ test PDFs per plan.md (pay_stub_clean.pdf, pay_stub_scanned.pdf, bank_statement.pdf, drivers_license.pdf)
+- [x] T016 [P] Create data/policies/ with 5 sample lending policy documents per spec.md FR-015 (underwriting_standards.pdf, credit_requirements.pdf, income_verification.pdf, property_guidelines.pdf, compliance_rules.pdf)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -68,10 +68,10 @@ Single project structure:
 
 ### Implementation for User Story 1
 
-- [ ] T017 [P] [US1] Create src/agents/__init__.py (empty package marker)
-- [ ] T018 [US1] Implement Azure Document Intelligence client wrapper in src/agents/document_agent.py::DocumentIntelligenceExtractor class (analyze_document method using prebuilt-invoice model per research.md decision)
-- [ ] T019 [US1] Implement GPT-4o text normalization in src/agents/document_agent.py::FieldNormalizer class (unify field names, calculate monthly from annual income per spec.md FR-004)
-- [ ] T020 [US1] Implement validation rules in src/agents/document_agent.py::DataValidator class (net <= gross, dates chronological, non-negative values per spec.md FR-005)
+- [x] T017 [P] [US1] Create src/agents/__init__.py (empty package marker)
+- [x] T018 [US1] Implement Azure Document Intelligence client wrapper in src/agents/document_agent.py::DocumentIntelligenceExtractor class (analyze_document method using prebuilt-invoice model per research.md decision)
+- [x] T019 [US1] Implement GPT-4o text normalization in src/agents/document_agent.py::FieldNormalizer class (unify field names, calculate monthly from annual income per spec.md FR-004)
+- [x] T020 [US1] Implement validation rules in src/agents/document_agent.py::DataValidator class (net <= gross, dates chronological, non-negative values per spec.md FR-005)
 - [ ] T021 [US1] Implement completeness scoring in src/agents/document_agent.py::CompletenessCalculator class (percentage of required fields extracted)
 - [ ] T022 [US1] Create notebooks/01_document_agent.ipynb demonstrating document upload, extraction, confidence scoring per spec.md acceptance scenarios
 - [ ] T023 [US1] Add interactive JSON viewer in 01_document_agent.ipynb using ipywidgets to display ExtractedDocument outputs

@@ -29,6 +29,28 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import List, Optional, Dict, Any, TypedDict
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum
+
+
+# ============================================================================
+# Document Type Enum
+# ============================================================================
+
+class DocumentType(str, Enum):
+    """
+    Supported document types for loan underwriting.
+    
+    Each type maps to specific Azure Document Intelligence prebuilt models
+    and validation rules. Used throughout the document processing pipeline.
+    
+    Inherits from str to maintain JSON serialization compatibility while
+    providing type safety and IDE autocomplete.
+    """
+    PAY_STUB = "pay_stub"
+    BANK_STATEMENT = "bank_statement"
+    TAX_RETURN = "tax_return"
+    DRIVERS_LICENSE = "drivers_license"
+    EMPLOYMENT_LETTER = "employment_letter"
 
 
 # ============================================================================
