@@ -72,10 +72,10 @@ Single project structure:
 - [x] T018 [US1] Implement Azure Document Intelligence client wrapper in src/agents/document_agent.py::DocumentIntelligenceExtractor class (analyze_document method using prebuilt-invoice model per research.md decision)
 - [x] T019 [US1] Implement GPT-4o text normalization in src/agents/document_agent.py::FieldNormalizer class (unify field names, calculate monthly from annual income per spec.md FR-004)
 - [x] T020 [US1] Implement validation rules in src/agents/document_agent.py::DataValidator class (net <= gross, dates chronological, non-negative values per spec.md FR-005)
-- [ ] T021 [US1] Implement completeness scoring in src/agents/document_agent.py::CompletenessCalculator class (percentage of required fields extracted)
-- [ ] T022 [US1] Create notebooks/01_document_agent.ipynb demonstrating document upload, extraction, confidence scoring per spec.md acceptance scenarios
-- [ ] T023 [US1] Add interactive JSON viewer in 01_document_agent.ipynb using ipywidgets to display ExtractedDocument outputs
-- [ ] T024 [US1] Implement cost logging in document_agent.py (track Document Intelligence usage, log per-document cost per spec.md FR-007)
+- [x] T021 [US1] Implement completeness scoring in src/agents/document_agent.py::CompletenessCalculator class (percentage of required fields extracted)
+- [x] T022 [US1] Create notebooks/01_document_agent.ipynb demonstrating document upload, extraction, confidence scoring per spec.md acceptance scenarios
+- [x] T023 [US1] Add interactive JSON viewer in 01_document_agent.ipynb using ipywidgets to display ExtractedDocument outputs
+- [x] T024 [US1] Implement cost logging in document_agent.py (track Document Intelligence usage, log per-document cost per spec.md FR-007)
 
 **Checkpoint**: Document Agent fully functional - can extract structured data from PDFs independently
 
@@ -89,19 +89,19 @@ Single project structure:
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Create src/mcp/__init__.py (empty package marker)
-- [ ] T026 [P] [US2] Create src/mcp/connectors/__init__.py (empty package marker)
-- [ ] T027 [US2] Implement FastAPI MCP server in src/mcp/server.py with 5 endpoints per contracts/mcp-server.yaml (GET /files/{filename}, GET /credit/{ssn}, GET /application/{app_id}, POST /admin/seed_credit_db, GET /health)
-- [ ] T028 [P] [US2] Implement file connector in src/mcp/connectors/file_connector.py (read PDFs from data/applications/ directory with path validation)
-- [ ] T029 [P] [US2] Implement credit connector in src/mcp/connectors/credit_connector.py (query mock_credit_bureau.db, return CreditReport schema per data-model.md)
-- [ ] T030 [US2] Implement DTI calculator in src/agents/risk_agent.py::FinancialCalculator class (DTI = monthly_debt / monthly_income × 100 per spec.md FR-009)
-- [ ] T031 [US2] Implement LTV calculator in src/agents/risk_agent.py::FinancialCalculator class (LTV = loan_amount / property_value × 100 per spec.md FR-010)
-- [ ] T032 [US2] Implement PTI calculator in src/agents/risk_agent.py::FinancialCalculator class (PTI = monthly_payment / monthly_income × 100 using amortization formula per spec.md FR-011)
-- [ ] T033 [US2] Implement GPT-4o risk analysis prompt in src/agents/risk_agent.py::RiskAnalyzer class (prompt with calculated metrics + credit data, expect risk_level + 3 risk_factors + 3 mitigating_factors per spec.md FR-012-013)
-- [ ] T034 [US2] Implement Plotly visualization generator in src/agents/risk_agent.py::RiskVisualizer class (bar chart for DTI/LTV/PTI with threshold lines per spec.md FR-014)
-- [ ] T035 [US2] Create notebooks/02_risk_agent.ipynb demonstrating MCP credit query, financial calculations, GPT-4o risk reasoning, interactive charts per spec.md acceptance scenario 1-5
-- [ ] T036 [US2] Add side-by-side comparison in 02_risk_agent.ipynb for excellent (780) vs poor (620) credit profiles showing different risk assessments
-- [ ] T037 [US2] Implement MCP server startup script in src/mcp/run_server.sh for easy launch (uvicorn command with --reload flag)
+- [x] T025 [US2] Create src/mcp/__init__.py (empty package marker)
+- [x] T026 [P] [US2] Create src/mcp/connectors/__init__.py (empty package marker)
+- [x] T027 [US2] Implement FastAPI MCP server in src/mcp/server.py with 5 endpoints per contracts/mcp-server.yaml (GET /files/{filename}, GET /credit/{ssn}, GET /application/{app_id}, POST /admin/seed_credit_db, GET /health)
+- [x] T028 [P] [US2] Implement file connector in src/mcp/connectors/file_connector.py (read PDFs from data/applications/ directory with path validation)
+- [x] T029 [P] [US2] Implement credit connector in src/mcp/connectors/credit_connector.py (query mock_credit_bureau.db, return CreditReport schema per data-model.md)
+- [x] T030 [US2] Implement DTI calculator in src/agents/risk_agent.py::FinancialCalculator class (DTI = monthly_debt / monthly_income × 100 per spec.md FR-009)
+- [x] T031 [US2] Implement LTV calculator in src/agents/risk_agent.py::FinancialCalculator class (LTV = loan_amount / property_value × 100 per spec.md FR-010)
+- [x] T032 [US2] Implement PTI calculator in src/agents/risk_agent.py::FinancialCalculator class (PTI = monthly_payment / monthly_income × 100 using amortization formula per spec.md FR-011)
+- [x] T033 [US2] Implement GPT-4o risk analysis prompt in src/agents/risk_agent.py::RiskAnalyzer class (prompt with calculated metrics + credit data, expect risk_level + 3 risk_factors + 3 mitigating_factors per spec.md FR-012-013)
+- [x] T034 [US2] Implement Plotly visualization generator in src/agents/risk_agent.py::RiskVisualizer class (bar chart for DTI/LTV/PTI with threshold lines per spec.md FR-014)
+- [x] T035 [US2] Create notebooks/02_risk_agent.ipynb demonstrating MCP credit query, financial calculations, GPT-4o risk reasoning, interactive charts per spec.md acceptance scenario 1-5
+- [x] T036 [US2] Add side-by-side comparison in 02_risk_agent.ipynb for excellent (780) vs poor (620) credit profiles showing different risk assessments
+- [x] T037 [US2] Implement MCP server startup script in src/mcp/run_server.sh for easy launch (uvicorn command with --reload flag)
 
 **Checkpoint**: Risk Agent fully functional - can analyze creditworthiness independently using MCP data
 
@@ -115,9 +115,9 @@ Single project structure:
 
 ### Implementation for User Story 3
 
-- [ ] T038 [P] [US3] Create src/rag/__init__.py (empty package marker)
-- [ ] T039 [US3] Implement Azure AI Search index creation in src/rag/indexer.py::PolicyIndexer class (create lending-policies-index with 1536-dim vector field per research.md decision)
-- [ ] T040 [US3] Implement document chunking in src/rag/indexer.py::DocumentChunker class (500 token chunks with 50 token overlap per research.md decision)
+- [x] T038 [P] [US3] Create src/rag/__init__.py (empty package marker)
+- [x] T039 [US3] Implement Azure AI Search index creation in src/rag/indexer.py::PolicyIndexer class (create lending-policies-index with 1536-dim vector field per research.md decision)
+- [x] T040 [US3] Implement document chunking in src/rag/indexer.py::DocumentChunker class (500 token chunks with 50 token overlap per research.md decision)
 - [ ] T041 [US3] Implement Ada-002 embedding generator in src/rag/embeddings.py::EmbeddingGenerator class (batch embed chunks using Azure OpenAI text-embedding-ada-002 per spec.md FR-015)
 - [ ] T042 [US3] Implement policy upload and indexing pipeline in src/rag/indexer.py::PolicyIndexer.index_documents method (chunk → embed → upload to Azure AI Search per spec.md FR-015)
 - [ ] T043 [US3] Implement semantic search retriever in src/rag/retriever.py::PolicyRetriever class (embed query, cosine similarity search, return top-3 chunks per spec.md FR-016-017)

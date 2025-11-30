@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.agents import DocumentIntelligenceExtractor
 from src.models import DocumentType
-from src.config import config
+from src.utils import config
 
 
 def test_basic_initialization():

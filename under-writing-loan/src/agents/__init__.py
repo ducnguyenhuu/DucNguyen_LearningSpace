@@ -13,9 +13,19 @@ Phase: 3 (User Story 1 - Document Processing & Extraction)
 Note: DocumentType enum moved to src.models for better reusability
 """
 
-from .document_agent import DocumentIntelligenceExtractor
+from .document_agent import (
+    DocumentIntelligenceExtractor,
+    FieldNormalizer,
+    DataValidator,
+    CompletenessCalculator,
+    CostTracker
+)
 
 __all__ = [
     'DocumentIntelligenceExtractor',
+    'FieldNormalizer',
+    'DataValidator',
+    'CompletenessCalculator',
+    'CostTracker',
 ]
 

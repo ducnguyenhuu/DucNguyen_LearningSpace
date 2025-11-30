@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.agents.document_agent import FieldNormalizer
 from src.models import DocumentType
-from src.config import config
+from src.utils import config
 
 
 def test_initialization():

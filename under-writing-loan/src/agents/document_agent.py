@@ -24,7 +24,7 @@ from datetime import datetime
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
 
-from ..config import config
+from ..utils import config
 from ..models import ExtractedDocument, DocumentType
 
 # Configure logging
@@ -48,19 +48,21 @@ class DocumentIntelligenceExtractor:
     - Use prebuilt-invoice model for pay stubs and bank statements
     """
     
-    def __init__(self, endpoint: Optional[str] = None, api_key: Optional[str] = None):
+    def __init__(self, endpoint: Optional[str] = None, api_key: Optional[str] = None, cost_tracker: Optional['CostTracker'] = None):
         """
         Initialize Document Intelligence client.
         
         Args:
             endpoint: Azure Document Intelligence endpoint (uses config if None)
             api_key: Azure Document Intelligence API key (uses config if None)
+            cost_tracker: Optional CostTracker instance for logging costs
             
         Raises:
             ValueError: If credentials are missing
         """
         self.endpoint = endpoint or config.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT
         self.api_key = api_key or config.AZURE_DOCUMENT_INTELLIGENCE_KEY
+        self.cost_tracker = cost_tracker
         
         if not self.endpoint or not self.api_key:
             raise ValueError(
@@ -144,6 +146,18 @@ class DocumentIntelligenceExtractor:
             # Generate document ID
             document_id = f"DOC-{application_id}-{doc_path.stem}"
             
+            # Log Document Intelligence cost (estimate page count from result)
+            if self.cost_tracker:
+                # Get page count from result (or default to 1)
+                page_count = len(result.pages) if hasattr(result, 'pages') and result.pages else 1
+                self.cost_tracker.log_document_intelligence_cost(
+                    document_id=document_id,
+                    document_type=doc_type_str,
+                    page_count=page_count,
+                    model_id=model_id,
+                    confidence_score=confidence
+                )
+            
             # Create ExtractedDocument
             extracted_doc = ExtractedDocument(
                 document_id=document_id,
@@ -204,7 +218,7 @@ class DocumentIntelligenceExtractor:
             ValueError: If document type is unsupported
         """
         model_map = {
-            "pay_stub": "prebuilt-invoice",
+            "pay_stub": "prebuilt-read",  # Use OCR for pay stubs, let GPT-4o extract fields
             "bank_statement": "prebuilt-invoice",
             "tax_return": "prebuilt-tax.us.w2",
             "drivers_license": "prebuilt-idDocument",
@@ -239,6 +253,10 @@ class DocumentIntelligenceExtractor:
         Returns:
             Tuple of (structured_data dict, average confidence score)
         """
+        # For read model (OCR-only), skip document check and extract text directly
+        if document_type in ["pay_stub", "employment_letter"]:
+            return self._extract_text_only(result)
+        
         if not result.documents or len(result.documents) == 0:
             logger.warning("No documents found in analysis result")
             return {}, 0.0
@@ -247,14 +265,12 @@ class DocumentIntelligenceExtractor:
         document = result.documents[0]
         
         # Extract fields based on document type
-        if document_type in ["pay_stub", "bank_statement"]:
+        if document_type == "bank_statement":
             return self._extract_invoice_fields(document)
         elif document_type == "tax_return":
             return self._extract_tax_fields(document)
         elif document_type == "drivers_license":
             return self._extract_id_fields(document)
-        elif document_type == "employment_letter":
-            return self._extract_text_only(result)
         else:
             return {}, 0.0
     
@@ -411,13 +427,14 @@ class FieldNormalizer:
     Per research.md: Use GPT-4o text mode (~$0.005 per application)
     """
     
-    def __init__(self, endpoint: Optional[str] = None, api_key: Optional[str] = None):
+    def __init__(self, endpoint: Optional[str] = None, api_key: Optional[str] = None, cost_tracker: Optional['CostTracker'] = None):
         """
         Initialize GPT-4o normalizer.
         
         Args:
             endpoint: Azure OpenAI endpoint (uses config if None)
             api_key: Azure OpenAI API key (uses config if None)
+            cost_tracker: Optional CostTracker instance for logging costs
             
         Raises:
             ValueError: If credentials are missing
@@ -427,6 +444,7 @@ class FieldNormalizer:
         self.endpoint = endpoint or config.AZURE_OPENAI_ENDPOINT
         self.api_key = api_key or config.AZURE_OPENAI_API_KEY
         self.deployment = config.AZURE_OPENAI_DEPLOYMENT_GPT4
+        self.cost_tracker = cost_tracker
         
         if not self.endpoint or not self.api_key:
             raise ValueError(
@@ -519,6 +537,15 @@ class FieldNormalizer:
             # Get token usage
             prompt_tokens = response.usage.prompt_tokens
             completion_tokens = response.usage.completion_tokens
+            
+            # Log GPT-4o cost
+            if self.cost_tracker:
+                self.cost_tracker.log_gpt4o_cost(
+                    document_id=document_id,
+                    operation="normalization",
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens
+                )
             
             logger.info(
                 f"Normalization complete. "
@@ -770,7 +797,7 @@ class DataValidator:
             ImportError: If ValidationRuleEngine cannot be imported
             FileNotFoundError: If rules file doesn't exist
         """
-        from .validation_engine import ValidationRuleEngine
+        from ..utils import ValidationRuleEngine
         
         self.rules_engine = ValidationRuleEngine(rules_file)
         logger.info(f"DataValidator initialized with ValidationRuleEngine (rules: {rules_file})")
@@ -812,11 +839,434 @@ class CompletenessCalculator:
     """
     Calculate completeness score for extracted documents.
     
-    This class will:
-    - Count required vs extracted fields
-    - Calculate percentage completeness
-    - Identify missing critical fields
+    This class calculates how complete a document extraction is by comparing
+    extracted fields against required field schemas for each document type.
     
-    Task: T021 - To be implemented
+    Completeness metrics:
+    - Percentage of required fields present (0-100%)
+    - List of missing critical fields
+    - Overall quality assessment
+    
+    Per spec.md FR-005: Calculate extraction completeness
+    Task: T021 - Implement completeness scoring
     """
-    pass
+    
+    # Define required fields for each document type
+    REQUIRED_FIELDS = {
+        DocumentType.PAY_STUB: [
+            "employer_name",
+            "employee_name",
+            "gross_monthly_income",
+            "net_monthly_income",
+            "pay_period_start",
+            "pay_period_end"
+        ],
+        DocumentType.BANK_STATEMENT: [
+            "bank_name",
+            "account_holder_name",
+            "account_number",
+            "statement_start_date",
+            "statement_end_date",
+            "ending_balance"
+        ],
+        DocumentType.TAX_RETURN: [
+            "tax_year",
+            "taxpayer_name",
+            "taxpayer_ssn",
+            "wages_annual",
+            "federal_tax_withheld"
+        ],
+        DocumentType.DRIVERS_LICENSE: [
+            "first_name",
+            "last_name",
+            "date_of_birth",
+            "license_number",
+            "expiration_date"
+        ],
+        DocumentType.EMPLOYMENT_LETTER: [
+            "employer_name",
+            "employee_name",
+            "job_title",
+            "employment_start_date",
+            "annual_salary"
+        ]
+    }
+    
+    def calculate_completeness(
+        self,
+        normalized_data: Dict[str, Any],
+        document_type: DocumentType
+    ) -> Tuple[float, List[str], str]:
+        """
+        Calculate completeness score for extracted document.
+        
+        This method:
+        1. Gets required fields for document type
+        2. Checks which required fields are present and non-null
+        3. Calculates percentage completeness
+        4. Identifies missing critical fields
+        5. Provides quality assessment
+        
+        Args:
+            normalized_data: Normalized document data from FieldNormalizer
+            document_type: Type of document being assessed
+            
+        Returns:
+            Tuple of (completeness_percentage, missing_fields, quality_label)
+            
+        Example:
+            calculator = CompletenessCalculator()
+            score, missing, quality = calculator.calculate_completeness(
+                {
+                    "employer_name": "Acme Corp",
+                    "employee_name": "John Doe",
+                    "gross_monthly_income": 5000.00,
+                    "net_monthly_income": 3800.00,
+                    # Missing: pay_period_start, pay_period_end
+                },
+                DocumentType.PAY_STUB
+            )
+            # score = 66.67 (4 out of 6 required fields)
+            # missing = ["pay_period_start", "pay_period_end"]
+            # quality = "partial"
+        """
+        # Get required fields for this document type
+        required_fields = self.REQUIRED_FIELDS.get(document_type, [])
+        
+        if not required_fields:
+            logger.warning(f"No required fields defined for {document_type.value}")
+            return 0.0, [], "unknown"
+        
+        # Check which required fields are present and have non-null values
+        present_fields = []
+        missing_fields = []
+        
+        for field in required_fields:
+            value = normalized_data.get(field)
+            
+            # Field is present if it exists and is not None/empty
+            if value is not None and value != "":
+                # For strings, check it's not just whitespace
+                if isinstance(value, str) and value.strip() == "":
+                    missing_fields.append(field)
+                else:
+                    present_fields.append(field)
+            else:
+                missing_fields.append(field)
+        
+        # Calculate percentage completeness
+        total_required = len(required_fields)
+        total_present = len(present_fields)
+        completeness_percentage = (total_present / total_required * 100) if total_required > 0 else 0.0
+        
+        # Determine quality label
+        quality_label = self._get_quality_label(completeness_percentage)
+        
+        logger.info(
+            f"Completeness for {document_type.value}: {completeness_percentage:.1f}% "
+            f"({total_present}/{total_required} fields) - {quality_label}"
+        )
+        
+        if missing_fields:
+            logger.warning(f"Missing fields: {', '.join(missing_fields)}")
+        
+        return completeness_percentage, missing_fields, quality_label
+    
+    def _get_quality_label(self, percentage: float) -> str:
+        """
+        Convert completeness percentage to quality label.
+        
+        Quality thresholds:
+        - excellent: 100% complete
+        - good: 80-99% complete
+        - partial: 50-79% complete
+        - poor: <50% complete
+        
+        Args:
+            percentage: Completeness percentage (0-100)
+            
+        Returns:
+            Quality label string
+        """
+        if percentage >= 100.0:
+            return "excellent"
+        elif percentage >= 80.0:
+            return "good"
+        elif percentage >= 50.0:
+            return "partial"
+        else:
+            return "poor"
+    
+    def get_required_fields(self, document_type: DocumentType) -> List[str]:
+        """
+        Get list of required fields for a document type.
+        
+        Useful for displaying expectations to users or for validation.
+        
+        Args:
+            document_type: Type of document
+            
+        Returns:
+            List of required field names
+            
+        Example:
+            calculator = CompletenessCalculator()
+            fields = calculator.get_required_fields(DocumentType.PAY_STUB)
+            # ["employer_name", "employee_name", ...]
+        """
+        return self.REQUIRED_FIELDS.get(document_type, [])
+
+
+class CostTracker:
+    """
+    Cost tracking for Document Intelligence and GPT-4o usage.
+    
+    This class logs per-document costs for:
+    - Azure Document Intelligence extraction ($0.001-0.0015 per page)
+    - GPT-4o text normalization (token-based pricing)
+    
+    Enables cost analysis and optimization for production deployments.
+    
+    Task: T024 - Implement cost logging
+    Per spec.md FR-007: Track Document Intelligence usage and log per-document cost
+    Per research.md: Document Intelligence ~$0.001/page, GPT-4o ~$0.005/application
+    """
+    
+    # Pricing constants (as of Nov 2025)
+    DOCUMENT_INTELLIGENCE_COST_PER_PAGE = 0.0015  # USD per page
+    GPT4O_PROMPT_COST_PER_1K_TOKENS = 0.005  # USD per 1K prompt tokens
+    GPT4O_COMPLETION_COST_PER_1K_TOKENS = 0.015  # USD per 1K completion tokens
+    
+    def __init__(self):
+        """Initialize cost tracker with empty log."""
+        self.cost_log = []
+        logger.info("CostTracker initialized")
+    
+    def log_document_intelligence_cost(
+        self,
+        document_id: str,
+        document_type: str,
+        page_count: int,
+        model_id: str,
+        confidence_score: float,
+        timestamp: Optional[datetime] = None
+    ) -> float:
+        """
+        Log Document Intelligence extraction cost.
+        
+        Args:
+            document_id: Unique document identifier
+            document_type: Type of document processed
+            page_count: Number of pages analyzed
+            model_id: Azure DI model used (e.g., prebuilt-invoice)
+            confidence_score: Extraction confidence score
+            timestamp: When extraction occurred (defaults to now)
+            
+        Returns:
+            Cost in USD for this extraction
+            
+        Example:
+            tracker = CostTracker()
+            cost = tracker.log_document_intelligence_cost(
+                document_id="DOC-001-pay_stub",
+                document_type="pay_stub",
+                page_count=2,
+                model_id="prebuilt-invoice",
+                confidence_score=0.85
+            )
+            # Returns: 0.003 (2 pages × $0.0015)
+        """
+        cost_usd = page_count * self.DOCUMENT_INTELLIGENCE_COST_PER_PAGE
+        
+        log_entry = {
+            "timestamp": timestamp or datetime.utcnow(),
+            "service": "document_intelligence",
+            "document_id": document_id,
+            "document_type": document_type,
+            "page_count": page_count,
+            "model_id": model_id,
+            "confidence_score": confidence_score,
+            "cost_usd": round(cost_usd, 6)
+        }
+        
+        self.cost_log.append(log_entry)
+        
+        logger.info(
+            f"Document Intelligence cost: ${cost_usd:.6f} "
+            f"({page_count} pages × ${self.DOCUMENT_INTELLIGENCE_COST_PER_PAGE})"
+        )
+        
+        return cost_usd
+    
+    def log_gpt4o_cost(
+        self,
+        document_id: str,
+        operation: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+        timestamp: Optional[datetime] = None
+    ) -> float:
+        """
+        Log GPT-4o normalization cost.
+        
+        Args:
+            document_id: Document being processed
+            operation: Operation type (e.g., "normalization", "validation")
+            prompt_tokens: Number of prompt tokens used
+            completion_tokens: Number of completion tokens generated
+            timestamp: When operation occurred (defaults to now)
+            
+        Returns:
+            Cost in USD for this operation
+            
+        Example:
+            tracker = CostTracker()
+            cost = tracker.log_gpt4o_cost(
+                document_id="DOC-001-pay_stub",
+                operation="normalization",
+                prompt_tokens=500,
+                completion_tokens=200
+            )
+            # Returns: 0.0055 (prompt + completion costs)
+        """
+        prompt_cost = (prompt_tokens / 1000) * self.GPT4O_PROMPT_COST_PER_1K_TOKENS
+        completion_cost = (completion_tokens / 1000) * self.GPT4O_COMPLETION_COST_PER_1K_TOKENS
+        total_cost = prompt_cost + completion_cost
+        
+        log_entry = {
+            "timestamp": timestamp or datetime.utcnow(),
+            "service": "gpt4o",
+            "document_id": document_id,
+            "operation": operation,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": prompt_tokens + completion_tokens,
+            "cost_usd": round(total_cost, 6)
+        }
+        
+        self.cost_log.append(log_entry)
+        
+        logger.info(
+            f"GPT-4o cost: ${total_cost:.6f} "
+            f"({prompt_tokens + completion_tokens} tokens)"
+        )
+        
+        return total_cost
+    
+    def get_total_cost(self) -> float:
+        """
+        Calculate total cost across all logged operations.
+        
+        Returns:
+            Total cost in USD
+            
+        Example:
+            tracker = CostTracker()
+            # ... process multiple documents ...
+            total = tracker.get_total_cost()
+            # Returns: 0.452 (sum of all operations)
+        """
+        return sum(entry["cost_usd"] for entry in self.cost_log)
+    
+    def get_cost_by_document(self, document_id: str) -> float:
+        """
+        Calculate total cost for a specific document.
+        
+        Args:
+            document_id: Document to calculate cost for
+            
+        Returns:
+            Total cost in USD for this document
+            
+        Example:
+            tracker = CostTracker()
+            cost = tracker.get_cost_by_document("DOC-001-pay_stub")
+            # Returns: 0.008 (DI + GPT-4o costs for this doc)
+        """
+        return sum(
+            entry["cost_usd"]
+            for entry in self.cost_log
+            if entry["document_id"] == document_id
+        )
+    
+    def get_cost_breakdown(self) -> Dict[str, Any]:
+        """
+        Get detailed cost breakdown by service and operation.
+        
+        Returns:
+            Dictionary with cost analysis:
+            - total_cost: Total USD across all operations
+            - document_intelligence_cost: Total DI extraction cost
+            - gpt4o_cost: Total GPT-4o cost
+            - document_count: Number of documents processed
+            - avg_cost_per_document: Average cost per document
+            - cost_by_service: Breakdown by service type
+            
+        Example:
+            tracker = CostTracker()
+            breakdown = tracker.get_cost_breakdown()
+            print(f"Total: ${breakdown['total_cost']:.4f}")
+            print(f"Avg per doc: ${breakdown['avg_cost_per_document']:.4f}")
+        """
+        di_cost = sum(
+            entry["cost_usd"]
+            for entry in self.cost_log
+            if entry["service"] == "document_intelligence"
+        )
+        
+        gpt4o_cost = sum(
+            entry["cost_usd"]
+            for entry in self.cost_log
+            if entry["service"] == "gpt4o"
+        )
+        
+        document_ids = set(
+            entry["document_id"]
+            for entry in self.cost_log
+        )
+        
+        total_cost = di_cost + gpt4o_cost
+        doc_count = len(document_ids)
+        avg_cost = total_cost / doc_count if doc_count > 0 else 0.0
+        
+        return {
+            "total_cost": round(total_cost, 6),
+            "document_intelligence_cost": round(di_cost, 6),
+            "gpt4o_cost": round(gpt4o_cost, 6),
+            "document_count": doc_count,
+            "avg_cost_per_document": round(avg_cost, 6),
+            "cost_by_service": {
+                "document_intelligence": round(di_cost, 6),
+                "gpt4o": round(gpt4o_cost, 6)
+            }
+        }
+    
+    def get_cost_log(self) -> List[Dict[str, Any]]:
+        """
+        Get complete cost log with all entries.
+        
+        Returns:
+            List of cost log entries (chronological order)
+            
+        Example:
+            tracker = CostTracker()
+            log = tracker.get_cost_log()
+            for entry in log:
+                print(f"{entry['timestamp']}: {entry['service']} - ${entry['cost_usd']}")
+        """
+        return self.cost_log.copy()
+    
+    def reset(self):
+        """
+        Clear cost log (useful for starting new analysis session).
+        
+        Example:
+            tracker = CostTracker()
+            # ... process batch 1 ...
+            batch1_cost = tracker.get_total_cost()
+            tracker.reset()
+            # ... process batch 2 ...
+            batch2_cost = tracker.get_total_cost()
+        """
+        self.cost_log = []
+        logger.info("Cost log reset")

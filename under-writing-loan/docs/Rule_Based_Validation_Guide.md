@@ -9,9 +9,10 @@ Instead of hardcoding validation rules in Python, the system now uses **configur
 ```
 src/
 ├── validation_rules.yaml           # ← Edit this to add/modify rules
+├── utils/
+│   └── validation_engine.py       # Rule engine (no need to modify)
 ├── agents/
-│   ├── validation_engine.py       # Rule engine (no need to modify)
-│   └── document_agent.py          # Can use either DataValidator or ValidationRuleEngine
+│   └── document_agent.py          # Uses ValidationRuleEngine
 ```
 
 ## Quick Start
@@ -19,7 +20,7 @@ src/
 ### 1. Use the Rule-Based Validator
 
 ```python
-from src.agents.validation_engine import ValidationRuleEngine
+from src.utils import ValidationRuleEngine
 from src.models import DocumentType
 
 # Initialize engine (loads rules from YAML)
@@ -276,7 +277,7 @@ python3 scripts/test_validation_engine.py
 
 # Test specific document type
 python3 -c "
-from src.agents.validation_engine import ValidationRuleEngine
+from src.utils import ValidationRuleEngine
 from src.models import DocumentType
 
 engine = ValidationRuleEngine()
