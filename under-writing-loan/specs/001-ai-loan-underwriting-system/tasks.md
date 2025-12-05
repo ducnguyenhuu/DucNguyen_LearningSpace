@@ -118,12 +118,12 @@ Single project structure:
 - [x] T038 [P] [US3] Create src/rag/__init__.py (empty package marker)
 - [x] T039 [US3] Implement Azure AI Search index creation in src/rag/indexer.py::PolicyIndexer class (create lending-policies-index with 1536-dim vector field per research.md decision)
 - [x] T040 [US3] Implement document chunking in src/rag/indexer.py::DocumentChunker class (500 token chunks with 50 token overlap per research.md decision)
-- [ ] T041 [US3] Implement Ada-002 embedding generator in src/rag/embeddings.py::EmbeddingGenerator class (batch embed chunks using Azure OpenAI text-embedding-ada-002 per spec.md FR-015)
-- [ ] T042 [US3] Implement policy upload and indexing pipeline in src/rag/indexer.py::PolicyIndexer.index_documents method (chunk → embed → upload to Azure AI Search per spec.md FR-015)
-- [ ] T043 [US3] Implement semantic search retriever in src/rag/retriever.py::PolicyRetriever class (embed query, cosine similarity search, return top-3 chunks per spec.md FR-016-017)
-- [ ] T044 [US3] Create notebooks/03_rag_system.ipynb demonstrating offline indexing of 5 policy documents, query embedding, similarity search, chunk retrieval per spec.md acceptance scenario 1-5
-- [ ] T045 [US3] Add interactive search widget in 03_rag_system.ipynb (text input for queries, display retrieved chunks with similarity scores)
-- [ ] T046 [US3] Implement no-result handling in retriever per spec.md edge case 3 (return empty list if all similarity scores <0.5)
+- [x] T041 [US3] Implement Ada-002 embedding generator in src/rag/embeddings.py::EmbeddingGenerator class (batch embed chunks using Azure OpenAI text-embedding-ada-002 per spec.md FR-015)
+- [x] T042 [US3] Implement policy upload and indexing pipeline in src/rag/indexer.py::PolicyIndexer.index_documents method (chunk → embed → upload to Azure AI Search per spec.md FR-015)
+- [X] T043 [US3] Implement semantic search retriever in src/rag/retriever.py::PolicyRetriever class (embed query, cosine similarity search, return top-3 chunks per spec.md FR-016-017)
+- [X] T044 [US3] Create notebooks/03_rag_system.ipynb demonstrating offline indexing of 5 policy documents, query embedding, similarity search, chunk retrieval per spec.md acceptance scenario 1-5
+- [X] T045 [US3] Add interactive search widget in 03_rag_system.ipynb (text input for queries, display retrieved chunks with similarity scores)
+- [X] T046 [US3] Implement no-result handling in retriever per spec.md edge case 3 (return empty list if all similarity scores <0.5)
 
 **Checkpoint**: RAG system fully functional - can retrieve relevant policy sections independently
 
@@ -137,16 +137,16 @@ Single project structure:
 
 ### Implementation for User Story 4
 
-- [ ] T047 [P] [US4] Implement compliance agent in src/agents/compliance_agent.py::ComplianceAgent class (integrate PolicyRetriever, prompt GPT-4o with retrieved context per spec.md FR-018)
-- [ ] T048 [US4] Implement policy citation extraction in src/agents/compliance_agent.py::CitationExtractor class (parse GPT-4o response for policy references)
-- [ ] T049 [US4] Create notebooks/04_compliance_agent.ipynb demonstrating RAG-powered compliance checking, policy citations, compliance status determination per spec.md acceptance scenario 1-5
-- [ ] T050 [US4] Implement decision rules matrix in src/agents/decision_agent.py::DecisionRules class (auto-reject if DTI >43% AND credit_score <640 per spec.md FR-021)
-- [ ] T051 [US4] Implement state aggregator in src/agents/decision_agent.py::StateAggregator class (combine ExtractedDocument + RiskAssessment + ComplianceReport into single dict per spec.md FR-020)
-- [ ] T052 [US4] Implement GPT-4o decision analysis prompt in src/agents/decision_agent.py::DecisionAnalyzer class (prompt with aggregated state for borderline cases per spec.md FR-022)
-- [ ] T053 [US4] Implement risk-adjusted rate calculator in src/agents/decision_agent.py::RateCalculator class (base rate + credit_score_adjustment + risk_level_premium per spec.md FR-023)
-- [ ] T054 [US4] Implement explanation generator in src/agents/decision_agent.py::ExplanationGenerator class (GPT-4o prompt for plain-language decision summary per spec.md FR-025)
-- [ ] T055 [US4] Create notebooks/05_decision_agent.ipynb demonstrating decision rule application, GPT-4o borderline analysis, rate calculation, explanation generation per spec.md acceptance scenario 1-5
-- [ ] T056 [US4] Add decision confidence indicator in 05_decision_agent.ipynb (color-coded decision status: green=Approved, yellow=Conditional, red=Rejected)
+- [X] T047 [P] [US4] Implement compliance agent in src/agents/compliance_agent.py::ComplianceAgent class (integrate PolicyRetriever, prompt GPT-4o with retrieved context per spec.md FR-018)
+- [X] T048 [US4] Implement policy citation extraction in src/agents/compliance_agent.py::CitationExtractor class (parse GPT-4o response for policy references)
+- [X] T049 [US4] Create notebooks/04_compliance_agent.ipynb demonstrating RAG-powered compliance checking, policy citations, compliance status determination per spec.md acceptance scenario 1-5
+- [X] T050 [US4] Implement decision rules matrix in src/agents/decision_agent.py::DecisionRules class (auto-reject if DTI >43% AND credit_score <640 per spec.md FR-021)
+- [X] T051 [US4] Implement state aggregator in src/agents/decision_agent.py::StateAggregator class (combine ExtractedDocument + RiskAssessment + ComplianceReport into single dict per spec.md FR-020)
+- [X] T052 [US4] Implement GPT-4o decision analysis prompt in src/agents/decision_agent.py::DecisionAnalyzer class (prompt with aggregated state for borderline cases per spec.md FR-022)
+- [X] T053 [US4] Implement risk-adjusted rate calculator in src/agents/decision_agent.py::RateCalculator class (base rate + credit_score_adjustment + risk_level_premium per spec.md FR-023)
+- [X] T054 [US4] Implement explanation generator in src/agents/decision_agent.py::ExplanationGenerator class (GPT-4o prompt for plain-language decision summary per spec.md FR-025)
+- [X] T055 [US4] Create notebooks/05_decision_agent.ipynb demonstrating decision rule application, GPT-4o borderline analysis, rate calculation, explanation generation per spec.md acceptance scenario 1-5
+- [X] T056 [US4] Add decision confidence indicator in 05_decision_agent.ipynb (color-coded decision status: green=Approved, yellow=Conditional, red=Rejected)
 
 **Checkpoint**: Decision Agent fully functional - can make final lending decisions independently with transparent reasoning
 
@@ -160,17 +160,17 @@ Single project structure:
 
 ### Implementation for User Story 5
 
-- [ ] T059 [US5] Define ApplicationState TypedDict in src/orchestrator.py per data-model.md (application_id, documents, extracted_data, credit_report, risk_assessment, compliance_result, final_decision, errors, execution_times)
-- [ ] T060 [US5] Implement document agent node in src/orchestrator.py::document_agent_node function (calls DocumentAgent, updates state.extracted_data, handles errors)
-- [ ] T061 [US5] Implement risk agent node in src/orchestrator.py::risk_agent_node function (queries MCP for credit, calls RiskAgent, updates state.risk_assessment)
-- [ ] T062 [US5] Implement compliance agent node in src/orchestrator.py::compliance_agent_node function (calls ComplianceAgent with RAG, updates state.compliance_result)
-- [ ] T063 [US5] Implement decision agent node in src/orchestrator.py::decision_agent_node function (calls DecisionAgent, updates state.final_decision)
-- [ ] T064 [US5] Define LangGraph workflow in src/orchestrator.py::create_workflow function (StateGraph with edges: document → risk → compliance → decision per spec.md FR-026)
-- [ ] T065 [US5] Implement error state node in src/orchestrator.py::error_handler_node function (logs error, marks workflow as failed, does not execute downstream agents per spec.md FR-028)
-- [ ] T066 [US5] Add conditional edges in create_workflow for error routing (check state.errors after each node per spec.md acceptance scenario 4)
-- [ ] T067 [US5] Implement execution timer in orchestrator nodes (track start/end time per agent, populate state.execution_times per spec.md FR-029)
-- [ ] T068 [US5] Create notebooks/06_orchestration.ipynb demonstrating full workflow execution, state evolution visualization, error handling scenarios per spec.md acceptance scenario 1-5
-- [ ] T069 [US5] Add state transition diagram in 06_orchestration.ipynb using Graphviz or mermaid to show agent flow
+- [X] T059 [US5] Define ApplicationState TypedDict in src/orchestrator.py per data-model.md (application_id, documents, extracted_data, credit_report, risk_assessment, compliance_result, final_decision, errors, execution_times)
+- [X] T060 [US5] Implement document agent node in src/orchestrator.py::document_agent_node function (calls DocumentAgent, updates state.extracted_data, handles errors)
+- [X] T061 [US5] Implement risk agent node in src/orchestrator.py::risk_agent_node function (queries MCP for credit, calls RiskAgent, updates state.risk_assessment)
+- [X] T062 [US5] Implement compliance agent node in src/orchestrator.py::compliance_agent_node function (calls ComplianceAgent with RAG, updates state.compliance_result)
+- [X] T063 [US5] Implement decision agent node in src/orchestrator.py::decision_agent_node function (calls DecisionAgent, updates state.final_decision)
+- [X] T064 [US5] Define LangGraph workflow in src/orchestrator.py::create_workflow function (StateGraph with edges: document → risk → compliance → decision per spec.md FR-026)
+- [X] T065 [US5] Implement error state node in src/orchestrator.py::error_handler_node function (logs error, marks workflow as failed, does not execute downstream agents per spec.md FR-028)
+- [X] T066 [US5] Add conditional edges in create_workflow for error routing (check state.errors after each node per spec.md acceptance scenario 4)
+- [X] T067 [US5] Implement execution timer in orchestrator nodes (track start/end time per agent, populate state.execution_times per spec.md FR-029)
+- [X] T068 [US5] Create notebooks/06_orchestration.ipynb demonstrating full workflow execution, state evolution visualization, error handling scenarios per spec.md acceptance scenario 1-5
+- [X] T069 [US5] Add state transition diagram in 06_orchestration.ipynb using Graphviz or mermaid to show agent flow
 
 **Checkpoint**: Orchestration fully functional - complete multi-agent workflow executes end-to-end
 

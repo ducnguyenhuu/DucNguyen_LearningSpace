@@ -17,6 +17,7 @@ from typing import List, Optional
 from pathlib import Path
 
 from azure.core.credentials import AzureKeyCredential
+from azure.search.documents import SearchClient
 from azure.search.documents.indexes import SearchIndexClient
 from azure.search.documents.indexes.models import (
     SearchIndex,
@@ -29,7 +30,7 @@ from azure.search.documents.indexes.models import (
     HnswAlgorithmConfiguration,
 )
 
-from src.utils.config import Config
+from utils.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,13 @@ class PolicyIndexer:
         credential = AzureKeyCredential(self.api_key)
         self.index_client = SearchIndexClient(
             endpoint=self.endpoint,
+            credential=credential
+        )
+        
+        # Initialize Search Client (for document operations)
+        self.search_client = SearchClient(
+            endpoint=self.endpoint,
+            index_name=self.index_name,
             credential=credential
         )
         
@@ -284,6 +292,216 @@ class PolicyIndexer:
         except Exception as e:
             logger.error(f"❌ Error getting index stats: {e}")
             raise
+    
+    def index_documents(
+        self,
+        file_paths: List[Path],
+        chunker: Optional['DocumentChunker'] = None,
+        embedder: Optional[object] = None,
+        batch_size: int = 10,
+        category_map: Optional[dict] = None
+    ) -> dict:
+        """
+        Process and index policy documents with embeddings.
+        
+        Pipeline: chunk → embed → upload to Azure AI Search
+        
+        This method implements the complete indexing workflow:
+        1. Chunk each document using DocumentChunker
+        2. Generate embeddings using EmbeddingGenerator
+        3. Upload chunks with embeddings to Azure AI Search
+        
+        Args:
+            file_paths: List of PDF or text file paths to index
+            chunker: DocumentChunker instance (creates default if None)
+            embedder: EmbeddingGenerator instance (must provide)
+            batch_size: Number of documents to upload per batch (default: 10)
+            category_map: Optional dict mapping filename stems to categories
+                         (e.g., {"underwriting_standards": "underwriting"})
+        
+        Returns:
+            Dictionary with indexing statistics:
+            - total_files: Number of files processed
+            - total_chunks: Total chunks created
+            - total_tokens: Total tokens embedded
+            - total_cost: Total embedding cost in USD
+            - failed_files: List of files that failed to process
+        
+        Raises:
+            ValueError: If embedder is not provided or index doesn't exist
+            Exception: If uploading to Azure AI Search fails
+        
+        Examples:
+            >>> from pathlib import Path
+            >>> from src.rag.embeddings import EmbeddingGenerator
+            >>> 
+            >>> indexer = PolicyIndexer()
+            >>> embedder = EmbeddingGenerator()
+            >>> 
+            >>> # Index all policy PDFs
+            >>> policy_dir = Path("data/policies")
+            >>> files = list(policy_dir.glob("*.pdf"))
+            >>> 
+            >>> stats = indexer.index_documents(
+            ...     file_paths=files,
+            ...     embedder=embedder,
+            ...     category_map={
+            ...         "underwriting_standards": "underwriting",
+            ...         "credit_requirements": "credit",
+            ...         "income_verification": "income"
+            ...     }
+            ... )
+            >>> 
+            >>> print(f"Indexed {stats['total_chunks']} chunks from {stats['total_files']} files")
+            >>> print(f"Total cost: ${stats['total_cost']:.6f}")
+        """
+        # Validate inputs
+        if embedder is None:
+            raise ValueError(
+                "EmbeddingGenerator must be provided. "
+                "Create one with: from src.rag.embeddings import EmbeddingGenerator"
+            )
+        
+        if not self.index_exists():
+            raise ValueError(
+                f"Index '{self.index_name}' does not exist. "
+                f"Call create_index() first."
+            )
+        
+        # Create default chunker if not provided
+        if chunker is None:
+            chunker = DocumentChunker(chunk_size=500, overlap=50)
+            logger.info("Using default DocumentChunker (500 tokens, 50 overlap)")
+        
+        # Initialize stats tracking
+        stats = {
+            "total_files": 0,
+            "total_chunks": 0,
+            "total_tokens": 0,
+            "total_cost": 0.0,
+            "failed_files": []
+        }
+        
+        # Category mapping (default to "general" if not specified)
+        if category_map is None:
+            category_map = {}
+        
+        logger.info(f"🚀 Starting indexing pipeline for {len(file_paths)} files")
+        logger.info(f"   Pipeline: chunk → embed → upload")
+        logger.info(f"   Batch size: {batch_size} documents")
+        
+        # Process each file
+        all_documents = []
+        
+        for file_idx, file_path in enumerate(file_paths, start=1):
+            try:
+                logger.info(f"\n📄 [{file_idx}/{len(file_paths)}] Processing: {file_path.name}")
+                
+                # Step 1: Chunk document
+                logger.info(f"   Step 1/3: Chunking document...")
+                chunks = chunker.chunk_file(file_path)
+                
+                if not chunks:
+                    logger.warning(f"   ⚠️ No chunks created from {file_path.name} - skipping")
+                    stats["failed_files"].append(str(file_path))
+                    continue
+                
+                logger.info(f"   ✅ Created {len(chunks)} chunks")
+                
+                # Step 2: Generate embeddings
+                logger.info(f"   Step 2/3: Generating embeddings...")
+                chunk_texts = [chunk["text"] for chunk in chunks]
+                embeddings = embedder.embed_batch(chunk_texts)
+                
+                logger.info(f"   ✅ Generated {len(embeddings)} embeddings")
+                
+                # Step 3: Prepare documents for upload
+                logger.info(f"   Step 3/3: Preparing documents for upload...")
+                
+                # Get category for this file
+                file_stem = file_path.stem
+                category = category_map.get(file_stem, "general")
+                
+                for chunk, embedding in zip(chunks, embeddings):
+                    # Create unique chunk ID
+                    chunk_id = f"{file_stem}_chunk_{chunk['index']}"
+                    
+                    # Create document matching Azure AI Search schema
+                    document = {
+                        "chunk_id": chunk_id,
+                        "content": chunk["text"],
+                        "embedding": embedding,
+                        "doc_title": file_path.stem.replace("_", " ").title(),
+                        "doc_category": category,
+                        "chunk_index": chunk["index"],
+                        "source_path": str(file_path)
+                    }
+                    
+                    all_documents.append(document)
+                
+                # Update stats
+                stats["total_files"] += 1
+                stats["total_chunks"] += len(chunks)
+                
+                logger.info(f"   ✅ Prepared {len(chunks)} documents for indexing")
+                
+            except Exception as e:
+                logger.error(f"   ❌ Error processing {file_path.name}: {e}")
+                stats["failed_files"].append(str(file_path))
+                continue
+        
+        # Upload all documents in batches
+        if all_documents:
+            logger.info(f"\n📤 Uploading {len(all_documents)} documents to Azure AI Search...")
+            logger.info(f"   Index: {self.index_name}")
+            logger.info(f"   Batch size: {batch_size}")
+            
+            try:
+                # Upload in batches
+                for i in range(0, len(all_documents), batch_size):
+                    batch = all_documents[i:i + batch_size]
+                    batch_num = (i // batch_size) + 1
+                    total_batches = (len(all_documents) + batch_size - 1) // batch_size
+                    
+                    logger.info(f"   Uploading batch {batch_num}/{total_batches} ({len(batch)} documents)...")
+                    
+                    result = self.search_client.upload_documents(documents=batch)
+                    
+                    # Check for failures
+                    succeeded = sum(1 for r in result if r.succeeded)
+                    failed = len(result) - succeeded
+                    
+                    if failed > 0:
+                        logger.warning(f"   ⚠️ Batch {batch_num}: {succeeded} succeeded, {failed} failed")
+                    else:
+                        logger.info(f"   ✅ Batch {batch_num}: All {succeeded} documents uploaded successfully")
+                
+                logger.info(f"✅ Upload complete: {len(all_documents)} documents indexed")
+                
+            except Exception as e:
+                logger.error(f"❌ Error uploading documents to Azure AI Search: {e}")
+                raise
+        
+        # Get cost summary from embedder
+        cost_summary = embedder.get_cost_summary()
+        stats["total_tokens"] = cost_summary["total_tokens"]
+        stats["total_cost"] = cost_summary["total_cost"]
+        
+        # Print final summary
+        logger.info(f"\n{'='*60}")
+        logger.info(f"📊 Indexing Pipeline Complete")
+        logger.info(f"{'='*60}")
+        logger.info(f"Files processed: {stats['total_files']}/{len(file_paths)}")
+        logger.info(f"Total chunks: {stats['total_chunks']}")
+        logger.info(f"Total tokens: {stats['total_tokens']:,}")
+        logger.info(f"Total cost: ${stats['total_cost']:.6f}")
+        
+        if stats["failed_files"]:
+            logger.warning(f"Failed files ({len(stats['failed_files'])}): {stats['failed_files']}")
+        
+        logger.info(f"{'='*60}\n")
+        
+        return stats
 
 
 class DocumentChunker:

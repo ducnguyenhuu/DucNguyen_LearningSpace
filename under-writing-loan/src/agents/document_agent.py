@@ -24,8 +24,8 @@ from datetime import datetime
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.formrecognizer import DocumentAnalysisClient, AnalyzeResult
 
-from ..utils import config
-from ..models import ExtractedDocument, DocumentType
+from utils import config
+from models import ExtractedDocument, DocumentType
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -797,7 +797,7 @@ class DataValidator:
             ImportError: If ValidationRuleEngine cannot be imported
             FileNotFoundError: If rules file doesn't exist
         """
-        from ..utils import ValidationRuleEngine
+        from utils import ValidationRuleEngine
         
         self.rules_engine = ValidationRuleEngine(rules_file)
         logger.info(f"DataValidator initialized with ValidationRuleEngine (rules: {rules_file})")
