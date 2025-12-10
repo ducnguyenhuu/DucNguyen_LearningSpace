@@ -154,6 +154,9 @@ class DecisionRules:
             f"Compliant={is_compliant}, CompScore={compliance_score:.1f}"
         )
         
+        # Initialize reasons list for tracking decision factors
+        reasons = []
+        
         # ====================================================================
         # AUTO-REJECT Rules (Deterministic - Confidence = 1.0)
         # ====================================================================

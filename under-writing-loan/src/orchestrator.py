@@ -528,7 +528,7 @@ def risk_agent_node(state: ApplicationState) -> ApplicationState:
         
         # Extract financial data from first document (simplified)
         # In real implementation, aggregate across all documents
-        doc = extracted_docs[0]
+        doc = extracted_docs[0] # only get the paystub in research plan
         structured_data = doc.get('structured_data', {})
         
         # Try to get monthly income from paystub extraction
@@ -850,13 +850,25 @@ def decision_agent_node(state: ApplicationState) -> ApplicationState:
             explanation = explanation_result.get('letter', explanation_result.get('summary', 'No explanation available'))
         except Exception as e:
             logger.warning(f"  Failed to generate explanation via GPT: {e}. Using simple summary.")
-            # Fallback to simple explanation
+            # Fallback to simple explanation (must be at least 100 characters)
             if final_decision_status == 'approved':
-                explanation = f"Loan application approved. Excellent credit profile and all requirements met."
+                explanation = (
+                    f"Loan application approved. This application demonstrates excellent creditworthiness with strong "
+                    f"financial metrics and full compliance with all lending policies. The borrower meets or exceeds "
+                    f"all underwriting standards for approval."
+                )
             elif final_decision_status == 'conditional_approval':
-                explanation = f"Loan application conditionally approved. Requirements: {', '.join(final_reasons[:3])}"
+                explanation = (
+                    f"Loan application conditionally approved pending verification of the following requirements: "
+                    f"{', '.join(final_reasons[:3])}. The borrower shows acceptable creditworthiness but requires "
+                    f"additional documentation before final approval."
+                )
             else:
-                explanation = f"Loan application denied. Reasons: {', '.join(final_reasons[:3])}"
+                explanation = (
+                    f"Loan application denied due to the following factors: {', '.join(final_reasons[:3])}. "
+                    f"The borrower does not currently meet the minimum underwriting standards required for approval. "
+                    f"Please review credit profile and reapply when conditions improve."
+                )
         
         # Create LendingDecision
         lending_decision = LendingDecision(

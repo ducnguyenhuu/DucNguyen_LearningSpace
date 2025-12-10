@@ -140,8 +140,34 @@ class DocumentIntelligenceExtractor:
             
             logger.info(f"Analysis complete. Found {len(result.documents)} document(s)")
             
+            # Log detailed extraction information
+            logger.info("="*80)
+            logger.info("DOCUMENT INTELLIGENCE EXTRACTION RESULTS")
+            logger.info("="*80)
+            logger.info(f"Document: {doc_path.name}")
+            logger.info(f"Type: {doc_type_str}")
+            logger.info(f"Model: {model_id}")
+            logger.info(f"Pages: {len(result.pages) if hasattr(result, 'pages') and result.pages else 'N/A'}")
+            
+            # Log raw content preview
+            if hasattr(result, 'content') and result.content:
+                content_preview = result.content[:500].replace('\n', ' ')
+                logger.info(f"Content Preview: {content_preview}...")
+            
             # Extract structured data based on document type
             structured_data, confidence = self._extract_fields(result, doc_type_str)
+            
+            # Log extracted structured data
+            logger.info(f"\nExtracted Structured Data ({len(structured_data)} fields):")
+            for key, value in structured_data.items():
+                # Truncate long values for readability
+                value_str = str(value)
+                if len(value_str) > 100:
+                    value_str = value_str[:100] + "..."
+                logger.info(f"  - {key}: {value_str}")
+            
+            logger.info(f"\nOverall Confidence Score: {confidence:.2%}")
+            logger.info("="*80)
             
             # Generate document ID
             document_id = f"DOC-{application_id}-{doc_path.stem}"
@@ -296,6 +322,7 @@ class DocumentIntelligenceExtractor:
         
         # Extract available fields
         if hasattr(document, 'fields') and document.fields:
+            logger.info(f"\nInvoice Model Fields (Total: {len(document.fields)}):")
             for field_name, field_value in document.fields.items():
                 if field_value:
                     # Get value and confidence
@@ -306,8 +333,13 @@ class DocumentIntelligenceExtractor:
                         structured_data[field_name] = value
                         confidences.append(confidence)
                         
-                        logger.debug(
-                            f"Field '{field_name}': {value} (confidence: {confidence:.2f})"
+                        # Truncate long values
+                        value_str = str(value)
+                        if len(value_str) > 80:
+                            value_str = value_str[:80] + "..."
+                        
+                        logger.info(
+                            f"  [{confidence:.2%}] {field_name}: {value_str}"
                         )
         
         # Calculate average confidence
@@ -335,6 +367,7 @@ class DocumentIntelligenceExtractor:
         confidences = []
         
         if hasattr(document, 'fields') and document.fields:
+            logger.info(f"\nTax W-2 Model Fields (Total: {len(document.fields)}):")
             for field_name, field_value in document.fields.items():
                 if field_value:
                     value = field_value.value if hasattr(field_value, 'value') else None
@@ -343,6 +376,7 @@ class DocumentIntelligenceExtractor:
                     if value is not None:
                         structured_data[field_name] = value
                         confidences.append(confidence)
+                        logger.info(f"  [{confidence:.2%}] {field_name}: {value}")
         
         avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
         
@@ -370,6 +404,7 @@ class DocumentIntelligenceExtractor:
         confidences = []
         
         if hasattr(document, 'fields') and document.fields:
+            logger.info(f"\nID Document Model Fields (Total: {len(document.fields)}):")
             for field_name, field_value in document.fields.items():
                 if field_value:
                     value = field_value.value if hasattr(field_value, 'value') else None
@@ -378,6 +413,7 @@ class DocumentIntelligenceExtractor:
                     if value is not None:
                         structured_data[field_name] = value
                         confidences.append(confidence)
+                        logger.info(f"  [{confidence:.2%}] {field_name}: {value}")
         
         avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
         
@@ -396,8 +432,21 @@ class DocumentIntelligenceExtractor:
         Returns:
             Tuple of (structured_data with raw_content, confidence 1.0)
         """
+        # Log OCR extraction
+        content = result.content if hasattr(result, 'content') else ""
+        logger.info(f"\nRead Model (OCR) Extraction:")
+        logger.info(f"  Content Length: {len(content)} characters")
+        logger.info(f"  Lines: {len(content.splitlines())}")
+        
+        # Log first 1000 characters as preview
+        if content:
+            preview = content[:1000].replace('\n', '\n  ')
+            logger.info(f"  Content Preview:\n  {preview}")
+            if len(content) > 1000:
+                logger.info(f"  ... (truncated, total {len(content)} characters)")
+        
         structured_data = {
-            "raw_content": result.content if hasattr(result, 'content') else ""
+            "raw_content": content
         }
         
         # Read model doesn't provide confidence scores, assume 1.0 for OCR success
@@ -506,12 +555,24 @@ class FieldNormalizer:
         import json
         
         logger.info(f"Normalizing {document_type.value} fields for {document_id}")
+        logger.info("="*80)
+        logger.info("GPT-4O FIELD NORMALIZATION")
+        logger.info("="*80)
+        
+        # Log raw input data
+        logger.info(f"\nRaw Extracted Data ({len(raw_data)} fields):")
+        for key, value in raw_data.items():
+            value_str = str(value)
+            if len(value_str) > 100:
+                value_str = value_str[:100] + "..."
+            logger.info(f"  - {key}: {value_str}")
         
         # Build prompt with document-type-specific schema
         prompt = self._build_normalization_prompt(raw_data, document_type)
         
         try:
             # Call GPT-4o
+            logger.info(f"\nCalling GPT-4o for normalization...")
             response = self.client.chat.completions.create(
                 model=self.deployment,
                 messages=[
@@ -537,6 +598,17 @@ class FieldNormalizer:
             # Get token usage
             prompt_tokens = response.usage.prompt_tokens
             completion_tokens = response.usage.completion_tokens
+            
+            # Log normalized output
+            logger.info(f"\nNormalized Data ({len(normalized_data)} fields):")
+            for key, value in normalized_data.items():
+                value_str = str(value)
+                if len(value_str) > 100:
+                    value_str = value_str[:100] + "..."
+                logger.info(f"  - {key}: {value_str}")
+            
+            logger.info(f"\nTokens Used: {prompt_tokens} prompt + {completion_tokens} completion = {prompt_tokens + completion_tokens} total")
+            logger.info("="*80)
             
             # Log GPT-4o cost
             if self.cost_tracker:
