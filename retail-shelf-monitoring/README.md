@@ -256,9 +256,8 @@ make run
 
 ## 📖 Documentation
 
-- [Architecture Guide](docs/ARCHITECTURE.md)
-- [API Reference](docs/API.md)  
-- [Deployment Guide](docs/DEPLOYMENT.md)
+- [Architecture Guide](ARCHITECTURE.md)
+
 
 ---
 

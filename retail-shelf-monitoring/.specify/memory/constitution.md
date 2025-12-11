@@ -72,11 +72,12 @@ Verify all generated code:
 ### In Scope
 - 4 challenges with public datasets (SKU-110K, etc.)
 - Azure AI services (Custom Vision, Document Intelligence, Azure ML)
-- Local development with Jupyter notebooks
-- Simple FastAPI demo API
+- Local development with Jupyter notebooks for demonstration
+- Python modules with production-standard structure
 - Basic MLOps with Azure ML
 
 ### Out of Scope (Too Complex for Learning)
+- UI development (web/mobile interfaces)
 - Real-time camera feeds, IoT Hub, Edge deployment
 - Multi-region deployment, Kubernetes
 - Microservices architecture
@@ -98,4 +99,32 @@ Verify all generated code:
 - Impact on existing code
 - Updated version number
 
-**Version**: 1.0.0 | **Ratified**: December 10, 2025 | **Last Amended**: December 10, 2025
+**Version**: 1.1.0 | **Ratified**: December 10, 2025 | **Last Amended**: December 10, 2025
+
+---
+
+## Amendment History
+
+### Amendment 1 - Backend Development Scope Addition (v1.1.0)
+**Date**: December 10, 2025  
+**Status**: Approved
+
+**Change**: Removed "FastAPI or REST API development" from Out of Scope section.
+
+**Justification**: 
+- User explicitly requested full-stack learning including "SQL, data modeling, and FastAPI"
+- Educational value: Teaches backend development skills alongside ML challenges
+- Complexity managed: Sequential implementation (database → API → ML) prevents overwhelm
+- Scope addition: PostgreSQL database (5 normalized tables) + FastAPI REST API (12-15 endpoints)
+- Aligns with plan.md Constitution Check §4 (justified violation for backend layer)
+
+**Impact**: 
+- Adds 2 weeks to timeline (10 weeks ML → 12 weeks total)
+- Adds ~32 backend-related tasks to implementation (database setup, API development, CRUD operations)
+- No conflict with Core Principles I-IV (learning-first approach maintained)
+
+**Referenced Artifacts**:
+- SPECIFICATION.md §10 (Database Design), §11 (API Specification)
+- research.md R7 (Database Design Strategy), R8 (FastAPI Architecture Strategy)
+- plan.md Phase 1 (Database + API Infrastructure)
+- tasks.md T009-T024 (Foundational Backend), T095-T126 (API Integration)

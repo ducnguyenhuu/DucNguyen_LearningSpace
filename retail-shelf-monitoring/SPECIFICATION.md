@@ -16,6 +16,8 @@ This specification defines a **learning-focused** research project that implemen
 - Public datasets only (SKU-110K, Grocery Store, RPC)
 - Simple implementations with professional code structure
 - Educational documentation mandatory for all components
+- Demonstration through Jupyter notebooks (NO UI/web development)
+- Focus on code modules and notebook-based visualization
 
 ---
 
@@ -38,7 +40,37 @@ By completing this project, developers will understand:
 - Azure ML for MLOps
 - Production Python package structure
 - Computer vision evaluation metrics
-- API development with FastAPI
+- **SQL and database design** (SQLite, normalization, indexing)
+- **RESTful API development** (FastAPI, Pydantic validation)
+- **Full-stack integration** (ML pipeline → Database → API)
+- Jupyter notebooks for demonstration and visualization
+
+### Prerequisites
+
+**Required Knowledge** (Junior Python Developer baseline):
+
+| Area | Requirement | Validation |
+|------|-------------|------------|
+| **Python** | 6-12 months experience with Python 3.x | Can write functions, classes, use standard library |
+| **Python Basics** | Variables, loops, conditionals, functions | Comfortable reading/writing 50-line scripts |
+| **OOP** | Basic classes, methods, inheritance | Can create simple class with `__init__` and methods |
+| **Libraries** | Familiarity with pip, virtual environments | Has installed packages, created venv before |
+| **Data Structures** | Lists, dicts, tuples | Can iterate, index, manipulate collections |
+| **Files/Paths** | Basic file I/O | Can read/write text files |
+
+**Helpful but NOT Required**:
+- NumPy/Pandas (will be taught)
+- Machine Learning concepts (project teaches from basics)
+- Azure experience (starts from account creation)
+- Computer Vision knowledge (explained step-by-step)
+- Git proficiency (basic clone/commit sufficient)
+
+**Technical Requirements**:
+- Computer with Python 3.10+ installed
+- 8GB+ RAM (16GB recommended for YOLO training)
+- Internet connection for Azure services
+- Text editor or IDE (VS Code recommended)
+- Local GPU optional (NVIDIA with CUDA for faster YOLO training, but CPU works)
 
 ---
 
@@ -104,6 +136,12 @@ Metrics:
   - mAP@0.5: > 85%
   - Classification accuracy: > 90%
   - Inference speed: > 10 FPS (local GPU)
+
+Hardware Specifications:
+  - Latency measurement: Apple M1/M2 or NVIDIA GPU (6GB+ VRAM)
+  - CPU fallback: Performance targets relaxed (>2 FPS acceptable)
+  - Batch size: 1 (single image inference for latency baseline)
+  - Image size: 640x640 (YOLO standard input)
 ```
 
 **Implementation Phases**:
@@ -203,10 +241,11 @@ Metrics:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    RESEARCH ARCHITECTURE                     │
+│              FULL-STACK LEARNING ARCHITECTURE                │
 └─────────────────────────────────────────────────────────────┘
 
 Data Layer:
+  - SQLite Database (product catalog, analysis results)
   - Public datasets (SKU-110K, Grocery Store, RPC)
   - Azure Blob Storage (training images, models)
 
@@ -217,10 +256,16 @@ AI/ML Layer:
   - Azure Document Intelligence (Challenge 4)
   - Azure Machine Learning (MLOps)
 
-Application Layer:
-  - Jupyter Notebooks (experimentation)
-  - FastAPI Service (REST API)
-  - Python CLI (utilities)
+Backend Layer:
+  - FastAPI REST API (product CRUD, analysis submission)
+  - SQLAlchemy ORM (database operations)
+  - Pydantic schemas (validation)
+  - Alembic migrations (schema versioning)
+
+Demonstration Layer:
+  - Jupyter Notebooks (implementation + API interaction)
+  - Python modules (production-structured code)
+  - Markdown guides (educational documentation)
 ```
 
 ### Technology Stack
@@ -231,10 +276,14 @@ Application Layer:
 | **ML Framework** | PyTorch + Ultralytics | YOLOv8 standard, good documentation |
 | **Azure AI** | Custom Vision, Document Intelligence | Free tier available, easy to learn |
 | **MLOps** | Azure Machine Learning | Complete MLOps platform, learning value |
-| **API** | FastAPI | Modern, fast, auto-documentation |
+| **Database** | SQLite 3+ | Embedded SQL database, ACID compliance, zero-config |
+| **Backend** | FastAPI 0.104+ | Modern Python web framework, auto-generated docs |
+| **ORM** | SQLAlchemy 2.0+ | Python standard, type-safe database access |
+| **Migrations** | Alembic | Database schema version control |
 | **Storage** | Azure Blob Storage | Cost-effective, native Azure integration |
-| **Testing** | pytest | Python standard, simple to use |
-| **Notebooks** | Jupyter | Interactive experimentation |
+| **Testing** | pytest + httpx | Python standard, API testing support |
+| **Notebooks** | Jupyter | Interactive demonstration and visualization |
+| **Visualization** | matplotlib, seaborn | Standard plotting libraries |
 
 ---
 
@@ -245,18 +294,21 @@ Application Layer:
 ```
 retail-shelf-monitoring/
 ├── src/shelf_monitor/          # Main application package
-│   ├── core/                   # Business logic (4 challenges)
+│   ├── core/                   # ML business logic (4 challenges)
 │   ├── models/                 # ML model wrappers
+│   ├── database/               # Database layer (ORM, schemas, CRUD)
+│   ├── api/                    # FastAPI backend (routers, dependencies)
 │   ├── services/               # Azure service integrations
-│   ├── api/                    # FastAPI application
 │   ├── config/                 # Configuration management
 │   └── utils/                  # Shared utilities
-├── notebooks/                  # Jupyter notebooks (by challenge)
+├── notebooks/                  # Jupyter notebooks (demonstration + API)
 ├── data/                       # Datasets (raw, processed, annotations)
 ├── models/                     # Trained model artifacts
-├── tests/                      # Test suite (unit, integration)
-├── scripts/                    # Utility scripts
-├── docker/                     # Docker configuration
+├── tests/                      # Test suite (unit + integration)
+│   ├── unit/                   # Unit tests (ML logic)
+│   └── integration/            # Integration tests (API + DB)
+├── scripts/                    # Utility scripts (setup, migrations)
+├── alembic/                    # Database migrations
 ├── docs/                       # Documentation
 │   ├── guides/                 # Implementation guides (mandatory)
 │   ├── ARCHITECTURE.md         # System architecture
@@ -381,15 +433,34 @@ Tools:
 - Input validation
 - Complete test coverage
 
+### Implementation Approach
+
+**Sequential Challenge Execution** (Recommended):
+
+1. Complete Challenge 1 Phase 1 → Test → Document
+2. Complete Challenge 2 Phase 1 → Test → Document  
+3. Complete Challenge 3 Phase 1 → Test → Document
+4. Complete Challenge 4 Phase 1 → Test → Document
+5. Iterate on phases 2-4 for selected challenges
+
+**Rationale**: 
+- Challenge 3 depends on Challenge 2 outputs (detection results)
+- Sequential learning builds understanding incrementally
+- Prevents context switching and incomplete implementations
+- Allows early wins and motivation (complete notebook after each challenge)
+
+**Parallel Work NOT Recommended**: Attempting multiple challenges simultaneously increases cognitive load and creates half-finished features (violates Constitution Principle V).
+
 ### Weekly Schedule
 
 | Week | Focus | Challenges | Deliverables |
-|------|-------|-----------|--------------|
-| 1-2 | Environment + Azure Setup | - | Azure resources, dev environment, dataset downloaded |
-| 3-4 | Detection Models | 1, 2 | Azure Custom Vision trained, OOS logic implemented |
-| 5-6 | Advanced Detection + Counting | 2, 3 | YOLOv8 trained, stock analyzer working |
-| 7-8 | OCR + API | 4 | Document Intelligence integrated, FastAPI endpoints |
-| 9-10 | MLOps + Refinement | All | Azure ML pipelines, model registry, deployment |
+|------|-------|-----------|-------------|
+| 1-2 | Environment + Database + Azure Setup | - | Azure resources, dev environment, SQLite, dataset downloaded |
+| 3-4 | Database + API Foundation | - | Database schema, API endpoints, seed data |
+| 5-6 | Detection Models | 1, 2 | Azure Custom Vision trained, OOS logic + notebook |
+| 7-8 | Advanced Detection + Counting | 2, 3 | YOLOv8 trained, stock analyzer + notebooks |
+| 9-10 | OCR + Demonstration | 4 | Document Intelligence integrated + notebook |
+| 11-12 | MLOps + API Integration + Final Notebooks | All | Azure ML pipelines, complete API integration, demonstration notebooks |
 
 ---
 
@@ -414,7 +485,7 @@ Tools:
 | **Computer Vision Skills** | Can train and evaluate YOLO models |
 | **Python Proficiency** | Code follows PEP 8, uses type hints, proper structure |
 | **MLOps Knowledge** | Can set up training pipelines, model registry |
-| **API Development** | Can build and document FastAPI endpoints |
+| **Notebook Skills** | Can create clear, educational notebooks with visualizations |
 
 ---
 
@@ -459,7 +530,7 @@ What to learn next or how to extend this.
 
 - [x] `README.md` - Project overview
 - [x] `SPECIFICATION.md` - This document
-- [x] `docs/ARCHITECTURE.md` - System architecture
+- [ ] `docs/ARCHITECTURE.md` - System architecture (optional)
 - [x] `docs/LEARNING_PATH.md` - Learning curriculum
 - [ ] `docs/guides/challenge_1_oos_detection.md` - Challenge 1 guide
 - [ ] `docs/guides/challenge_2_product_recognition.md` - Challenge 2 guide
@@ -467,6 +538,8 @@ What to learn next or how to extend this.
 - [ ] `docs/guides/challenge_4_price_verification.md` - Challenge 4 guide
 - [ ] `docs/guides/azure_setup.md` - Azure configuration guide
 - [ ] `docs/guides/yolo_training.md` - YOLO training guide
+- [ ] `docs/guides/database_design.md` - Database schema and SQL guide
+- [ ] `docs/guides/api_development.md` - FastAPI development guide
 
 ---
 
@@ -484,9 +557,32 @@ What to learn next or how to extend this.
 - Validate error handling
 - Focus: `services/`
 
-**Manual Testing**: Notebooks and API
-- Jupyter notebooks for experimentation
-- FastAPI Swagger UI for API testing
+**Manual Testing**: Notebooks only
+- Jupyter notebooks for experimentation and demonstration
+- Visual inspection of outputs and visualizations
+
+### Error Handling Requirements
+
+**Phase 1 Minimum** (Must implement):
+
+| Error Type | Handling Strategy | User Message |
+|------------|------------------|-------------|
+| **Azure API Failure** | Retry 3x with exponential backoff (1s, 2s, 4s) | "Azure API unavailable. Retrying... (attempt X/3)" |
+| **Azure Quota Exceeded** | Catch HTTP 429, log error, suggest free tier limits | "Custom Vision quota exceeded (10K/month). Try tomorrow or upgrade tier." |
+| **Invalid Image** | Validate format (JPEG/PNG), resolution (≥640x480) | "Invalid image: {filename}. Must be JPEG/PNG, min 640x480 resolution." |
+| **Missing File** | Check path exists before processing | "File not found: {path}. Check file path and try again." |
+| **Network Timeout** | Set 30s timeout, catch exception | "Request timed out after 30s. Check internet connection." |
+| **Model Not Trained** | Check model exists before inference | "Model not found. Train model first using notebook section 2." |
+
+**Error Logging**:
+- Log all errors to console with timestamp
+- Educational error messages (explain what + why + how to fix)
+- Phase 4: Add structured logging to file (`logs/app.log`)
+
+**Recovery Strategies**:
+- Azure API: Implement retry with exponential backoff
+- Training failures: Save checkpoints every 10 epochs (YOLO)
+- Dataset download: Resume interrupted downloads (use `wget -c` or `requests` with Range headers)
 
 ### Testing Standards
 
@@ -512,7 +608,144 @@ def test_detect_invalid_image_path():
 
 ---
 
-## 10. Azure Service Configuration
+## 10. Database Design
+
+### Schema Overview
+
+**5 SQLite Tables** (3NF normalized):
+
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| **products** | Product catalog with SKU metadata | id, sku, name, category_id, expected_price |
+| **categories** | Product categories | id, name, description |
+| **analysis_jobs** | Tracks ML analysis runs | id, image_path, challenge_type, status, created_at |
+| **detections** | Individual product detections | id, analysis_job_id, sku, bbox (x/y/w/h), confidence |
+| **price_history** | Price observations over time | id, sku, detected_price, confidence, detected_at |
+
+### Entity Relationships
+
+```
+categories (1) ----< (many) products
+products (1) ----< (many) price_history
+analysis_jobs (1) ----< (many) detections
+products (1) ----< (many) detections [soft FK via sku]
+```
+
+### Sample SQL Queries
+
+**Get all products in a category**:
+```sql
+SELECT p.sku, p.name, p.expected_price
+FROM products p
+JOIN categories c ON p.category_id = c.id
+WHERE c.name = 'Beverages';
+```
+
+**Get detections for analysis job**:
+```sql
+SELECT d.sku, d.confidence, d.bbox_x, d.bbox_y
+FROM detections d
+WHERE d.analysis_job_id = 123
+ORDER BY d.confidence DESC;
+```
+
+**Count products per SKU from analysis**:
+```sql
+SELECT d.sku, COUNT(*) as count
+FROM detections d
+WHERE d.analysis_job_id = 123
+GROUP BY d.sku;
+```
+
+**Price history for SKU**:
+```sql
+SELECT detected_price, detected_at
+FROM price_history
+WHERE sku = 'coca_cola_500ml'
+ORDER BY detected_at DESC
+LIMIT 10;
+```
+
+### Migration Strategy
+
+**Alembic workflow**:
+```bash
+# Create new migration
+alembic revision --autogenerate -m "Add products table"
+
+# Review generated migration in alembic/versions/
+
+# Apply migration
+alembic upgrade head
+
+# Rollback if needed
+alembic downgrade -1
+```
+
+---
+
+## 11. API Specification
+
+### RESTful Endpoints
+
+**Base URL**: `http://localhost:8000/api/v1`
+
+**Core Endpoints** (9 implemented in Phase 1):
+
+| Endpoint | Method | Purpose | Request Body | Response |
+|----------|--------|---------|--------------|----------|
+| `/health` | GET | Health check | - | `{"status": "healthy"}` |
+| `/products` | GET | List products | - | `[{sku, name, ...}]` |
+| `/products` | POST | Create product | `{sku, name, ...}` | `{id, sku, ...}` |
+| `/products/{sku}` | GET | Get product | - | `{sku, name, ...}` |
+| `/products/{sku}` | PUT | Update product | `{name, price, ...}` | `{sku, name, ...}` |
+| `/products/{sku}` | DELETE | Delete product | - | `204 No Content` |
+| `/analysis/detect` | POST | Submit analysis | `image: file` | `{job_id, status}` |
+| `/analysis/{job_id}` | GET | Get job status | - | `{job_id, status, ...}` |
+| `/analysis/{job_id}/detections` | GET | Get detections | - | `[{sku, bbox, ...}]` |
+
+**Optional Endpoints** (Phase 4 extensions):
+- `/detections` GET - Query all detections with filters
+- `/categories` GET/POST - Category management
+- `/price-history/{sku}` GET - Price tracking over time
+- `/statistics/stock` GET - Stock analysis aggregates
+
+### API Usage Examples
+
+**Create product**:
+```bash
+curl -X POST http://localhost:8000/api/v1/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sku": "coca_cola_500ml",
+    "name": "Coca Cola 500ml",
+    "category_id": 1,
+    "expected_price": 2.99
+  }'
+```
+
+**Submit analysis job**:
+```bash
+curl -X POST http://localhost:8000/api/v1/analysis/detect \
+  -F "image=@shelf_001.jpg" \
+  -F "challenge_type=PRODUCT_RECOGNITION"
+```
+
+**Get analysis results**:
+```bash
+curl http://localhost:8000/api/v1/analysis/123/detections
+```
+
+### Interactive API Documentation
+
+FastAPI auto-generates interactive documentation:
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
+- **OpenAPI JSON**: `http://localhost:8000/openapi.json`
+
+---
+
+## 13. Risk & Mitigation
 
 ### Required Azure Resources
 
@@ -524,6 +757,25 @@ def test_detect_invalid_image_path():
 | **Azure ML** | Pay-as-you-go | Training compute, MLOps | ~$5-20/month* |
 
 *Use spot instances and auto-shutdown to minimize costs.
+
+### Azure Free Tier Quota Limits
+
+**Critical Constraints** (F0 tier):
+
+| Service | Limit | Impact on Project |
+|---------|-------|-------------------|
+| **Custom Vision** | 2 projects max | Use 1 for Challenge 1 (OOS), 1 for Challenge 2 (Product Recognition) |
+| **Custom Vision** | 5,000 training images | Use subset of SKU-110K dataset (~4,000 images) |
+| **Custom Vision** | 10,000 predictions/month | Sufficient for testing and evaluation |
+| **Custom Vision** | 10 training iterations | Limited experimentation - plan iterations carefully |
+| **Document Intelligence** | 500 pages/month | Adequate for Challenge 4 testing (~100-200 test images) |
+| **Document Intelligence** | 15 requests/minute | Rate limiting - implement retry logic with exponential backoff |
+
+**Quota Exceeded Handling**:
+- Monitor usage via Azure Portal
+- Implement request counting in code
+- Set up Azure budget alerts (recommended: $5 threshold)
+- Fallback: Use local YOLO inference if Custom Vision exhausted
 
 ### Setup Steps
 
@@ -543,11 +795,13 @@ def test_detect_invalid_image_path():
 
 ### Environment Setup
 - [ ] Python 3.10+ installed
+- [ ] Python 3.10+ with SQLite support (built-in)
 - [ ] Virtual environment created
 - [ ] Dependencies installed (`requirements.txt`)
+- [ ] Database created and migrated (Alembic)
 - [ ] Azure subscription created
 - [ ] Azure resources provisioned
-- [ ] `.env` file configured
+- [ ] `.env` file configured (Azure + database connection)
 
 ### Challenge 1: Out-of-Stock Detection
 - [ ] Azure Custom Vision project created
@@ -582,12 +836,24 @@ def test_detect_invalid_image_path():
 - [ ] Implementation guide documented
 - [ ] Notebook completed
 
-### FastAPI Application
-- [ ] API structure created
-- [ ] Endpoints implemented (`/detect`, `/count`, `/ocr`)
-- [ ] Request/response schemas defined
-- [ ] API documentation (Swagger) verified
-- [ ] Manual testing completed
+### Backend Development
+- [ ] Database schema designed (5 tables: products, categories, analysis_jobs, detections, price_history)
+- [ ] Alembic migrations created
+- [ ] SQLAlchemy ORM models implemented
+- [ ] Pydantic schemas defined
+- [ ] CRUD operations implemented
+- [ ] FastAPI application structured
+- [ ] API routers implemented (products, analysis, detections, health)
+- [ ] API endpoint tests written
+- [ ] Database seeded with product catalog
+
+### Demonstration Notebooks
+- [ ] All 4 challenge notebooks completed
+- [ ] API integration demonstrated in notebooks
+- [ ] Code execution verified
+- [ ] Outputs and visualizations included
+- [ ] Educational explanations added
+- [ ] Results documented
 
 ### MLOps & Deployment
 - [ ] Azure ML pipelines configured
@@ -597,17 +863,22 @@ def test_detect_invalid_image_path():
 
 ---
 
-## 12. Constraints & Boundaries
+## 14. Constraints & Boundaries
 
 ### In Scope (Per Constitution)
-✅ 4 challenges with public datasets
+✅ 4 ML challenges with public datasets
 ✅ Azure AI services (Custom Vision, Document Intelligence, Azure ML)
+✅ **SQLite database** (product catalog, analysis results)
+✅ **FastAPI REST API** (CRUD operations, analysis submission)
+✅ **Database design** (schema, migrations, SQL queries)
 ✅ Local development with Jupyter notebooks
-✅ Simple FastAPI demo API
+✅ Python modules with production-standard structure
+✅ Notebook-based demonstration and API interaction
 ✅ Basic MLOps with Azure ML
 ✅ Educational documentation for all components
 
 ### Out of Scope
+❌ UI development (web/mobile interfaces)
 ❌ Real-time camera feeds
 ❌ IoT Hub / Edge deployment
 ❌ Multi-region deployment
@@ -619,7 +890,7 @@ def test_detect_invalid_image_path():
 
 ---
 
-## 13. Risk & Mitigation
+## 15. Acceptance Criteria
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
@@ -627,29 +898,37 @@ def test_detect_invalid_image_path():
 | **Dataset quality issues** | Medium | Use well-established public datasets (SKU-110K) |
 | **Model performance below target** | Medium | Start with Azure Custom Vision, iterate with YOLO |
 | **Complexity creep** | High | Constitution enforcement, regular reviews |
-| **Time overrun** | Medium | Fixed 10-week timeline, prioritize Phase 1 completions |
+| **Time overrun** | Medium | Fixed 12-week timeline (added 2 weeks for backend), prioritize Phase 1 completions |
+| **Database complexity** | Medium | Start with simple schema, use ORM, follow normalization best practices |
 
 ---
 
-## 14. Acceptance Criteria
+## 15. Acceptance Criteria
 
 ### Project Completion Definition
 
 The project is considered complete when:
 
-1. **All 4 challenges implemented** with working code
-2. **Technical metrics met** (or documented why not)
-3. **Documentation complete**:
-   - All implementation guides written
+1. **All 4 ML challenges implemented** with working code
+2. **Backend infrastructure complete**:
+   - Database schema migrated and seeded
+   - REST API endpoints functional
+   - API tests passing
+3. **Technical metrics met** (or documented why not)
+4. **Documentation complete**:
+   - All implementation guides written (ML + database + API)
    - Code has docstrings and comments
    - README accurate and up-to-date
-4. **Code quality verified**:
+5. **Code quality verified**:
    - Follows PEP 8
    - Type hints present
    - Production structure maintained
-5. **API functional**: FastAPI endpoints working
-6. **Notebooks runnable**: All 4 challenge notebooks execute successfully
-7. **Basic tests passing**: Unit tests for core modules
+6. **Notebooks complete**: All 4 challenge notebooks:
+   - Execute successfully end-to-end
+   - Display clear outputs and visualizations
+   - Include educational explanations
+   - Demonstrate API interactions
+7. **Tests passing**: Unit tests for core modules + integration tests for API
 
 ### Quality Gates
 
@@ -660,22 +939,24 @@ The project is considered complete when:
 - [ ] Code runs successfully
 
 **Before project completion**:
-- [ ] All 14 acceptance criteria met
+- [ ] All acceptance criteria met
 - [ ] Peer review completed (if available)
 - [ ] Final documentation review
 
 ---
 
-## 15. Future Enhancements (Post-Learning)
+## 16. Future Enhancements (Post-Learning)
 
 Once learning objectives are met, consider:
 
+- **Web UI**: React/Vue dashboard for visualization
 - **Real-time inference**: Deploy to Azure Container Instances
 - **Model monitoring**: Track performance drift
 - **Advanced features**: A/B testing, canary deployments
 - **Production deployment**: IoT Hub, Edge devices
-- **Web UI**: React/Vue dashboard
 - **Mobile app**: Flutter application
+- **Authentication**: JWT tokens, OAuth2 flow
+- **Background jobs**: Celery for async ML processing
 
 **Important**: These are explicitly out of scope for the learning phase.
 
@@ -685,6 +966,10 @@ Once learning objectives are met, consider:
 
 | Term | Definition |
 |------|------------|
+| **API** | Application Programming Interface - contract for software communication |
+| **CRUD** | Create, Read, Update, Delete - basic database operations |
+| **ORM** | Object-Relational Mapping - database abstraction layer |
+| **3NF** | Third Normal Form - database normalization level |
 | **mAP** | Mean Average Precision - object detection metric |
 | **MAPE** | Mean Absolute Percentage Error - regression metric |
 | **SKU** | Stock Keeping Unit - unique product identifier |
@@ -707,7 +992,7 @@ See `docs/ARCHITECTURE.md` for detailed technical architecture.
 - [YOLOv8 Documentation](https://docs.ultralytics.com/)
 - [SKU-110K Paper](https://arxiv.org/abs/1904.00853)
 - [PyTorch Tutorials](https://pytorch.org/tutorials/)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Jupyter Notebook Documentation](https://jupyter-notebook.readthedocs.io/)
 
 ---
 
