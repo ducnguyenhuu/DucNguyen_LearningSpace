@@ -48,19 +48,19 @@ This learning project implements 4 ML challenges (Challenge 1: Out-of-Stock Dete
 - [X] T003 Create .env.example template with Azure and database credential placeholders
 - [X] T004 Create data/ directory for SQLite database (auto-created by SQLAlchemy)
 - [X] T005 Initialize Alembic for database migrations in alembic/ directory
-- [ ] T006 Create Azure subscription and provision Custom Vision F0 resource
-- [ ] T007 Create Azure Document Intelligence F0 resource
-- [ ] T008 Configure .env file with Azure credentials and database connection string
-- [ ] T008a [P] Create .specify/plans/data-model.md with 8 entity definitions (5 DB tables: categories, products, analysis_jobs, detections, price_history + 3 dataclasses: Detection, GapRegion, StockCount)
-- [ ] T008b [P] Create .specify/plans/contracts/ directory with 7 Python module interface contracts (detector.py, classifier.py, stock_analyzer.py, ocr.py, products.py, analysis.py, crud.py)
+- [X] T006 Create Azure subscription and provision Custom Vision F0 resource
+- [X] T007 Create Azure Document Intelligence F0 resource
+- [X] T008 Configure .env file with Azure credentials and database connection string
+- [X] T008a [P] Create .specify/plans/data-model.md with 8 entity definitions (5 DB tables: categories, products, analysis_jobs, detections, price_history + 3 dataclasses: Detection, GapRegion, StockCount)
+- [X] T008b [P] Create .specify/plans/contracts/ directory with 7 Python module interface contracts (detector.py, classifier.py, stock_analyzer.py, ocr.py, products.py, analysis.py, crud.py)
 
 ### Foundational Tasks (Blocking Prerequisites)
 
-- [ ] T009 Create src/shelf_monitor/ package structure with __init__.py files
-- [ ] T010 [P] Implement database models in src/shelf_monitor/database/models.py (5 tables: Product, Category, AnalysisJob, Detection, PriceHistory) with CHECK constraints for bbox validation and price_difference GENERATED column
-- [ ] T011 [P] Create Pydantic schemas in src/shelf_monitor/database/schemas.py for validation
-- [ ] T012 [P] Implement CRUD operations in src/shelf_monitor/database/crud.py
-- [ ] T013 [P] Create database session management in src/shelf_monitor/database/session.py
+- [X] T009 Create src/shelf_monitor/ package structure with __init__.py files
+- [X] T010 [P] Implement database models in src/shelf_monitor/database/models.py (5 tables: Product, Category, AnalysisJob, Detection, PriceHistory) with CHECK constraints for bbox validation and price_difference GENERATED column
+- [X] T011 [P] Create Pydantic schemas in src/shelf_monitor/database/schemas.py for validation
+- [X] T012 [P] Implement CRUD operations in src/shelf_monitor/database/crud.py
+- [X] T013 [P] Create database session management in src/shelf_monitor/database/session.py
 - [ ] T014 Generate first Alembic migration for all 5 database tables
 - [ ] T015 Apply database migrations (alembic upgrade head) to create schema
 - [ ] T016 [P] Download SKU-110K dataset (11,762 images) to data/raw/SKU110K/ using scripts/download_dataset.py
