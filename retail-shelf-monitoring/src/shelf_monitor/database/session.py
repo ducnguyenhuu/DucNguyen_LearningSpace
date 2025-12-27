@@ -27,21 +27,22 @@ Related:
 - Settings: src/shelf_monitor/config/settings.py (T022)
 """
 
-import os
 from typing import Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+
+from src.shelf_monitor.config.settings import settings
 
 
 # ============================================================================
 # Database Configuration
 # ============================================================================
 
-# Get database URL from environment variable
-# Default: SQLite database in data/ directory
-# For testing: Use sqlite:///:memory: for in-memory database
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/retail_shelf_monitoring.db")
+# Get database URL from settings (loaded from .env file)
+# Settings provides type safety, validation, and centralized config
+# For testing: Override with Settings(database_url="sqlite:///:memory:")
+DATABASE_URL = settings.database_url
 
 # Create SQLAlchemy engine
 # connect_args={"check_same_thread": False} is needed for SQLite
@@ -50,7 +51,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/retail_shelf_monitoring
 engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
-    echo=False,  # Set to True for SQL query logging (debugging)
+    echo=settings.log_sql_queries,  # SQL query logging from settings
 )
 
 # Create SessionLocal class for database sessions

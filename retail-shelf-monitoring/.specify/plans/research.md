@@ -9,169 +9,120 @@
 ## Decision R1: Dataset Management Strategy
 
 ### Chosen Solution
-Use **SKU-110K subset (4,000 images)** for Azure Custom Vision, **full dataset (11,762 images)** for YOLO training.
+Use **full SKU-110K dataset (11,762 images)** for single-class YOLO training. No subsetting needed.
 
 ### Rationale
-- **Azure Constraint**: Custom Vision F0 tier limits training to 5,000 images max
-- **Learning Value**: Compare cloud (Custom Vision) vs local (YOLO) approaches with different data volumes
-- **Stratified Sampling**: Maintain class distribution when creating 4K subset
-- **Storage**: Local filesystem sufficient (<5GB total), Azure Blob optional for MLOps phase
+- **Single Class**: Dataset already has "object" annotations (no multi-class labeling)
+- **No Cloud Limits**: Training locally, no Azure Custom Vision 5K image limit
+- **Maximum Learning Data**: More training data = better YOLO performance
+- **Storage**: Local filesystem sufficient (~5GB total)
 
 ### Implementation Details
-**Subset Selection**:
-- Analyze class distribution in full SKU-110K (1.7M annotations, ~150 products/image avg)
-- Use stratified random sampling to maintain product category ratios
-- Export 4K images + annotations in COCO format for Custom Vision
-
 **Preprocessing Pipeline**:
 ```python
-# scripts/prepare_data.py workflow
-1. Download SKU-110K from GitHub (11,762 images, COCO JSON)
-   - Use annotations from: annotations/annotations_train.json + annotations/annotations_test.json
-2. Convert COCO → YOLO format (txt files: class x_center y_center width height)
-3. Split: 70% train / 15% val / 15% test (8,233 / 1,764 / 1,765 images)
-4. Create Custom Vision subset (2,800 train / 600 val / 600 test)
-5. Validate: Check for corrupt images, missing annotations
+# scripts/prepare_data.py workflow (COMPLETED IN T017)
+1. Download SKU-110K from GitHub (11,762 images, CSV annotations)
+2. Convert CSV → YOLO format (txt files: class x_center y_center width height)
+3. Split using original SKU-110K splits: train (8,219) / val (588) / test (2,936)
+4. Validate: Check for corrupt images, missing annotations
 ```
 
 **Directory Structure**:
 ```
 data/
-├── raw/SKU110K/                # Original download
-│   ├── images/                 # 11,762 JPG files
-│   └── annotations.json        # COCO format
-├── processed/
-│   ├── yolo/                   # Full dataset for YOLO
-│   │   ├── train/ (images + labels)
-│   │   ├── val/
-│   │   └── test/
-│   └── custom_vision_subset/   # 4K subset for Azure
-│       ├── train/
-│       ├── val/
-│       └── test/
-└── annotations/
-    ├── coco_format.json
-    └── yolo_format/ (txt files)
+├── raw/SKU110K/SKU110K_fixed/     # Original download
+│   ├── images/                     # 11,762 JPG files
+│   └── annotations/                # 3 CSV files (train/val/test)
+└── processed/SKU110K_yolo/         # YOLO format (COMPLETED)
+    ├── images/
+    │   ├── train/ (8,219 images)
+    │   ├── val/ (588 images)
+    │   └── test/ (2,936 images)
+    ├── labels/
+    │   ├── train/ (8,219 .txt files)
+    │   ├── val/ (588 .txt files)
+    │   └── test/ (2,936 .txt files)
+    └── data.yaml  # YOLO training config
 ```
 
 **Data Augmentation**:
-- **Phase 1**: None (baseline performance)
-- **Phase 2+**: If metrics insufficient, add:
-  - Random brightness/contrast (±20%)
-  - Horizontal flip (50% probability)
-  - Minor rotation (±5 degrees)
+- **Built-in**: YOLO auto-applies mosaic, mixup, HSV jitter
+- **No custom augmentation needed** for Phase 1
 
 ### Alternatives Considered
 
 | Alternative | Reason Rejected |
 |-------------|----------------|
-| **Single 5K dataset for both** | Limits YOLO learning potential; want to compare performance with full data |
-| **Cloud-only storage (Azure Blob)** | Adds complexity and cost (~$0.20/month); local storage sufficient for learning |
-| **Random sampling (no stratification)** | Could create class imbalance in subset; stratified maintains distribution |
-| **Use Grocery Store dataset** | Smaller (5,125 images), fewer products (81 classes); SKU-110K more realistic |
+| **Subset for Azure Custom Vision** | Not using Azure, no cloud limits |
+| **Cloud-only storage (Azure Blob)** | Adds complexity and cost; local storage sufficient |
+| **Use Grocery Store dataset** | Smaller (5,125 images); SKU-110K is larger and better |
+| **Manual labeling for multi-class** | Too time-consuming (50-100 images); single-class is simpler |
 
 ### Tools & Commands
 ```bash
-# Download dataset
-python scripts/download_dataset.py --dataset SKU110K --output data/raw/
+# Already completed in T017
+python3 scripts/prepare_data.py  # Converts SKU-110K to YOLO format
 
-# Prepare and split
-python scripts/prepare_data.py \
-  --input data/raw/SKU110K \
-  --output data/processed/ \
-  --split 0.7/0.15/0.15 \
-  --subset-size 4000 \
-  --format both  # COCO + YOLO
-
-# Validate
-python scripts/validate_dataset.py --path data/processed/
+# Validate dataset
+ls data/processed/SKU110K_yolo/images/train | wc -l  # Should be 8219
+ls data/processed/SKU110K_yolo/labels/train | wc -l  # Should be 8219
 ```
 
 ---
 
-## Decision R2: Azure Custom Vision Strategy
+## Decision R2: Single-Class YOLO Strategy
 
 ### Chosen Solution
-Allocate **2 Custom Vision projects**: 
-- **Project 1**: Out-of-Stock Detection (Challenge 1) - Object Detection
-- **Project 2**: Product Recognition (Challenge 2) - Multi-class Classification
+Train **one YOLOv8s model** with single class "object" to serve both Challenge 1 (gap detection) and Challenge 2 (object counting).
 
 ### Rationale
-- **Free Tier Limit**: F0 allows 2 projects maximum
-- **Challenge Separation**: Keeps OOS (gap detection) separate from SKU classification
-- **Iteration Budget**: 10 training iterations total - plan carefully (5 per project recommended)
-- **Learning Comparison**: Challenge 2 uses both Custom Vision AND YOLO for educational comparison
+- **Simplicity**: Single model, single class, no manual labeling required
+- **SKU-110K Ready**: Dataset already has "object" annotations for all 11,762 images
+- **Dual Purpose**: Same detections used for gap analysis AND counting
+- **Cost**: $0 (no cloud services, local training only)
+- **Learning Focus**: Deep dive into YOLO training, inference, and post-processing
 
 ### Implementation Strategy
 
-**Project 1: OOS Detection** (Challenge 1)
+**Single YOLO Model**:
 ```yaml
-Goal: Detect product bounding boxes for gap identification
-Dataset: 2,800 train images from Custom Vision subset
-Iterations:
-  1-3: Baseline training (500 → 1,500 → 2,800 images)
-  4-5: Refinement with hard negatives
-Training Time: ~15-30 min per iteration (F0 tier)
-Evaluation: Precision >90%, Recall >85%
+Goal: Detect all objects on retail shelves (single "object" class)
+Dataset: SKU-110K full dataset (8,219 train, 588 val, 2,936 test)
+Training Time: 2-3 hours (GPU), 8-10 hours (CPU)
+Evaluation: Precision >90%, Recall >85%, mAP@0.5 >85%
 ```
 
-**Project 2: Product Recognition** (Challenge 2)
-```yaml
-Goal: Classify detected products to SKU level
-Dataset: 1,200 train images from Custom Vision subset (reserve 1,600 for YOLO)
-Iterations:
-  1-2: Baseline with top 20 SKUs
-  3-4: Add more SKUs incrementally
-  5: Final model with all classes
-Training Time: ~20-40 min per iteration
-Evaluation: Accuracy >90%
-Comparison: Evaluate against YOLOv8 results
-```
-
-**Quota Monitoring**:
+**Challenge 1: Gap Detection**:
 ```python
-# src/shelf_monitor/services/azure_custom_vision.py
-
-class CustomVisionMonitor:
-    def __init__(self):
-        self.prediction_count = 0
-        self.monthly_limit = 10_000
-        
-    def check_quota(self):
-        """Warn at 80% usage (8,000 predictions)."""
-        if self.prediction_count >= 0.8 * self.monthly_limit:
-            logging.warning(
-                f"Custom Vision quota at {self.prediction_count}/{self.monthly_limit}. "
-                "Consider switching to local YOLO inference."
-            )
+# Use YOLO detections to find empty spaces
+detections = model.predict(image)  # Get bounding boxes
+gaps = analyze_gaps(detections)     # Geometric analysis
 ```
 
-### Fallback Plan
-**If Custom Vision quota exhausted**:
-1. Switch to local YOLO inference for remaining experiments
-2. Document quota exhaustion as learning point
-3. Continue with YOLO-only for Challenge 2 comparison
-4. Phase 4: Optional upgrade to S0 tier ($2/month for 10K more predictions)
+**Challenge 2: Object Counting**:
+```python
+# Simply count detections
+detections = model.predict(image)
+count = len(detections)  # Total objects
+```
 
 ### Alternatives Considered
 
 | Alternative | Reason Rejected |
 |-------------|----------------|
-| **Single project for all challenges** | Can't separate OOS detection from classification; limits flexibility |
-| **3+ projects** | Exceeds F0 free tier limit (2 projects max) |
-| **Skip Custom Vision, YOLO-only** | Misses cloud AI learning objective; want Azure experience |
-| **Upload full 4K to one project** | Better to split for iteration management and quota preservation |
+| **Multi-class YOLO** | Requires manual labeling (50-100 images × 10-15 classes = 2-3 hours work) |
+| **Azure Custom Vision** | Adds cost, cloud dependency, quota limits; not needed for learning goals |
+| **Pre-trained COCO model** | Generic classes (bottle, cup) don't match retail products well |
+| **Separate models per challenge** | Unnecessary complexity; one model serves both use cases |
 
 ### Tools & Commands
 ```bash
-# Upload training data to Custom Vision
-python scripts/upload_to_custom_vision.py \
-  --project oos-detection \
-  --images data/processed/custom_vision_subset/train/ \
-  --annotations data/annotations/coco_format.json
+# Train YOLO on SKU-110K
+yolo train data=data/processed/SKU110K_yolo/data.yaml \
+  model=yolov8s.pt epochs=50 imgsz=640 batch=16
 
-# Train via Azure SDK
-python notebooks/01_out_of_stock_detection.ipynb  # Section 2
+# Inference
+yolo predict model=models/best.pt source=test_image.jpg
 ```
 
 ---

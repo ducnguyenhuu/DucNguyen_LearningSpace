@@ -9,15 +9,16 @@
 
 ## Executive Summary
 
-This specification defines a **learning-focused** research project that implements retail shelf monitoring using Azure AI and Computer Vision. The project addresses 4 critical retail challenges using public datasets, with emphasis on educational value and production-standard code organization.
+This specification defines a **learning-focused** research project that implements retail shelf monitoring using Computer Vision and YOLO. The project addresses 2 critical retail challenges using SKU-110K public dataset, with emphasis on educational value and production-standard code organization.
 
 **Key Constraints**:
 - Research project, NOT production deployment
-- Public datasets only (SKU-110K, Grocery Store, RPC)
+- Public dataset: SKU-110K (11,762 images, single "object" class)
 - Simple implementations with professional code structure
 - Educational documentation mandatory for all components
 - Demonstration through Jupyter notebooks (NO UI/web development)
 - Focus on code modules and notebook-based visualization
+- Single-class object detection (no product-specific recognition)
 
 ---
 
@@ -27,22 +28,22 @@ This specification defines a **learning-focused** research project that implemen
 
 | Goal | Description | Success Criteria |
 |------|-------------|------------------|
-| **Learn Azure AI** | Hands-on experience with Azure AI services | Complete integration of Custom Vision, Document Intelligence, Azure ML |
-| **Master Computer Vision** | Understand CV fundamentals and object detection | Working YOLO model trained on retail dataset |
+| **Master Computer Vision** | Understand CV fundamentals and object detection | Working YOLO model trained on SKU-110K dataset |
 | **Production Code Practices** | Learn professional Python development | Code follows PEP 8, type hints, modular structure |
-| **Solve Real Problems** | Address actual retail challenges | 4 challenges implemented with measurable metrics |
+| **Solve Real Problems** | Address actual retail challenges | 2 challenges implemented with measurable metrics |
+| **Full-Stack Integration** | Connect ML models to database and REST API | FastAPI backend serving YOLO predictions |
 
 ### Learning Outcomes
 
 By completing this project, developers will understand:
-- Azure AI service integration (Custom Vision, Document Intelligence)
-- Object detection with YOLO
-- Azure ML for MLOps
+- Object detection with YOLOv8 (single-class training)
+- Gap detection algorithms (geometric analysis)
+- Object counting from detection results
 - Production Python package structure
-- Computer vision evaluation metrics
+- Computer vision evaluation metrics (mAP, precision, recall)
 - **SQL and database design** (SQLite, normalization, indexing)
 - **RESTful API development** (FastAPI, Pydantic validation)
-- **Full-stack integration** (ML pipeline → Database → API)
+- **Full-stack integration** (YOLO → Database → API)
 - Jupyter notebooks for demonstration and visualization
 
 ### Prerequisites
@@ -113,125 +114,43 @@ Metrics:
 
 ---
 
-### Challenge 2: Product Recognition
+### Challenge 2: Object Counting
 
-**Business Context**: Manual SKU identification is slow and error-prone in stores with thousands of products.
+**Business Context**: Retailers need quick inventory counts to manage restocking and track shelf occupancy.
 
 **Technical Specification**:
 ```yaml
 Input: Shelf image
-Output: List of detected products with SKU labels and bounding boxes
-Method: Object detection + classification
-Datasets: 
-  - Primary: SKU-110K
-  - Alternative: Grocery Store (5,125 images, 81 classes)
+Output: Total count of objects detected
+Method: Object detection → counting
+Dataset: SKU-110K (same single "object" class)
 
 Requirements:
-  - Detect multiple products in single image
-  - Classify each detection to SKU level
-  - Handle varying orientations and partial occlusions
-  - Support both Azure Custom Vision and YOLOv8
+  - Use same YOLO model from Challenge 1
+  - Count total objects detected
+  - Track counts over time (optional trend analysis)
+  - Report shelf occupancy rate
+  - Simple Python implementation (no complex ML)
 
 Metrics:
-  - mAP@0.5: > 85%
-  - Classification accuracy: > 90%
-  - Inference speed: > 10 FPS (local GPU)
-
-Hardware Specifications:
-  - Latency measurement: Apple M1/M2 or NVIDIA GPU (6GB+ VRAM)
-  - CPU fallback: Performance targets relaxed (>2 FPS acceptable)
-  - Batch size: 1 (single image inference for latency baseline)
-  - Image size: 640x640 (YOLO standard input)
+  - Count accuracy: > 95%
+  - Processing time: < 100ms (after detection)
+  - False positive rate: < 5%
 ```
 
 **Implementation Phases**:
-1. **Phase 1**: Azure Custom Vision object detection (rapid prototype)
-2. **Phase 2**: Train YOLOv8 on SKU-110K for comparison
-3. **Phase 3**: Add SKU classification layer
-4. **Phase 4**: Optimize inference speed
+1. **Phase 1**: Reuse YOLO detections from Challenge 1
+2. **Phase 2**: Implement counting logic (len(detections))
+3. **Phase 3**: Add confidence filtering
+4. **Phase 4**: Implement time-series tracking
 
 **Deliverables**:
-- `core/classifier.py`: SKU classification class
-- `models/yolo.py`: YOLOv8 wrapper
-- `services/azure_custom_vision.py`: Azure Custom Vision integration
-- `notebooks/02_product_recognition.ipynb`: Training & evaluation notebook
-- `docs/guides/challenge_2_product_recognition.md`: Implementation guide
-- `tests/unit/test_classifier.py`: Unit tests
+- `core/counter.py`: Object counting class
+- `notebooks/02_object_counting.ipynb`: Demonstration notebook
+- `docs/guides/challenge_2_object_counting.md`: Implementation guide
+- `tests/unit/test_counter.py`: Unit tests
 
----
 
-### Challenge 3: Stock Level Estimation
-
-**Business Context**: Retailers need to know product quantities to plan restocking effectively.
-
-**Technical Specification**:
-```yaml
-Input: Detection results from Challenge 2
-Output: Stock count per SKU
-Method: Count aggregation from detections
-Dataset: Derived from Challenge 2 detections
-
-Requirements:
-  - Count products per SKU from detections
-  - Estimate shelf depth (front-facing × estimated rows)
-  - Track stock trends over time (optional)
-  - Simple Python implementation (no ML model)
-
-Metrics:
-  - Count accuracy: > 90%
-  - Mean Absolute Percentage Error (MAPE): < 15%
-```
-
-**Implementation Phases**:
-1. **Phase 1**: Simple counting from detection list
-2. **Phase 2**: Add depth estimation heuristics
-3. **Phase 3**: Implement trend tracking (time series)
-4. **Phase 4**: Add statistical validation
-
-**Deliverables**:
-- `core/stock_analyzer.py`: Stock counting and analysis
-- `notebooks/03_stock_level_estimation.ipynb`: Analysis notebook
-- `docs/guides/challenge_3_stock_estimation.md`: Implementation guide
-- `tests/unit/test_stock_analyzer.py`: Unit tests
-
----
-
-### Challenge 4: Price Tag Verification
-
-**Business Context**: Incorrect price tags cause customer complaints and regulatory fines.
-
-**Technical Specification**:
-```yaml
-Input: Shelf image with price tags
-Output: Extracted prices with confidence scores
-Method: Azure Document Intelligence (pre-trained OCR)
-Dataset: None required (pre-trained model)
-
-Requirements:
-  - Detect price tag regions near products
-  - Extract text using Azure Document Intelligence OCR
-  - Parse price values from various formats ($X.XX, €X,XX)
-  - Compare against reference database (simulated)
-  - No custom training required
-
-Metrics:
-  - OCR accuracy: > 95%
-  - Price extraction success rate: > 90%
-  - Price match rate: > 95% (when database available)
-```
-
-**Implementation Phases**:
-1. **Phase 1**: Azure Document Intelligence OCR integration
-2. **Phase 2**: Price tag region detection (simple bounding box)
-3. **Phase 3**: Price parsing and validation logic
-4. **Phase 4**: Database comparison (mock data)
-
-**Deliverables**:
-- `core/ocr.py`: OCR and price extraction class
-- `services/azure_document_intelligence.py`: Azure service integration
-- `notebooks/04_price_tag_verification.ipynb`: Testing notebook
-- `docs/guides/challenge_4_price_verification.md`: Implementation guide
-- `tests/unit/test_ocr.py`: Unit tests
 
 ---
 
@@ -245,19 +164,16 @@ Metrics:
 └─────────────────────────────────────────────────────────────┘
 
 Data Layer:
-  - SQLite Database (product catalog, analysis results)
-  - Public datasets (SKU-110K, Grocery Store, RPC)
-  - Azure Blob Storage (training images, models)
+  - SQLite Database (analysis results, detection history)
+  - SKU-110K Dataset (11,762 images, single "object" class)
+  - Local filesystem (training images, models)
 
 AI/ML Layer:
-  - Azure Custom Vision (Challenge 1 & 2)
-  - YOLOv8 Local/Azure ML (Challenge 2)
-  - Python Analysis (Challenge 3)
-  - Azure Document Intelligence (Challenge 4)
-  - Azure Machine Learning (MLOps)
+  - YOLOv8 (single-class object detection)
+  - Python Analysis (gap detection, counting)
 
 Backend Layer:
-  - FastAPI REST API (product CRUD, analysis submission)
+  - FastAPI REST API (analysis submission, results retrieval)
   - SQLAlchemy ORM (database operations)
   - Pydantic schemas (validation)
   - Alembic migrations (schema versioning)
@@ -274,13 +190,10 @@ Demonstration Layer:
 |-----------|------------|---------------|
 | **Language** | Python 3.10+ | Industry standard for ML/AI, rich ecosystem |
 | **ML Framework** | PyTorch + Ultralytics | YOLOv8 standard, good documentation |
-| **Azure AI** | Custom Vision, Document Intelligence | Free tier available, easy to learn |
-| **MLOps** | Azure Machine Learning | Complete MLOps platform, learning value |
 | **Database** | SQLite 3+ | Embedded SQL database, ACID compliance, zero-config |
 | **Backend** | FastAPI 0.104+ | Modern Python web framework, auto-generated docs |
 | **ORM** | SQLAlchemy 2.0+ | Python standard, type-safe database access |
 | **Migrations** | Alembic | Database schema version control |
-| **Storage** | Azure Blob Storage | Cost-effective, native Azure integration |
 | **Testing** | pytest + httpx | Python standard, API testing support |
 | **Notebooks** | Jupyter | Interactive demonstration and visualization |
 | **Visualization** | matplotlib, seaborn | Standard plotting libraries |
@@ -294,20 +207,19 @@ Demonstration Layer:
 ```
 retail-shelf-monitoring/
 ├── src/shelf_monitor/          # Main application package
-│   ├── core/                   # ML business logic (4 challenges)
-│   ├── models/                 # ML model wrappers
+│   ├── core/                   # ML business logic (2 challenges)
+│   ├── models/                 # YOLO model wrapper
 │   ├── database/               # Database layer (ORM, schemas, CRUD)
 │   ├── api/                    # FastAPI backend (routers, dependencies)
-│   ├── services/               # Azure service integrations
 │   ├── config/                 # Configuration management
 │   └── utils/                  # Shared utilities
 ├── notebooks/                  # Jupyter notebooks (demonstration + API)
 ├── data/                       # Datasets (raw, processed, annotations)
-├── models/                     # Trained model artifacts
+├── models/                     # Trained YOLO model artifacts
 ├── tests/                      # Test suite (unit + integration)
 │   ├── unit/                   # Unit tests (ML logic)
 │   └── integration/            # Integration tests (API + DB)
-├── scripts/                    # Utility scripts (setup, migrations)
+├── scripts/                    # Utility scripts (setup, data prep)
 ├── alembic/                    # Database migrations
 ├── docs/                       # Documentation
 │   ├── guides/                 # Implementation guides (mandatory)
@@ -533,10 +445,7 @@ What to learn next or how to extend this.
 - [ ] `docs/ARCHITECTURE.md` - System architecture (optional)
 - [x] `docs/LEARNING_PATH.md` - Learning curriculum
 - [ ] `docs/guides/challenge_1_oos_detection.md` - Challenge 1 guide
-- [ ] `docs/guides/challenge_2_product_recognition.md` - Challenge 2 guide
-- [ ] `docs/guides/challenge_3_stock_estimation.md` - Challenge 3 guide
-- [ ] `docs/guides/challenge_4_price_verification.md` - Challenge 4 guide
-- [ ] `docs/guides/azure_setup.md` - Azure configuration guide
+- [ ] `docs/guides/challenge_2_object_counting.md` - Challenge 2 guide
 - [ ] `docs/guides/yolo_training.md` - YOLO training guide
 - [ ] `docs/guides/database_design.md` - Database schema and SQL guide
 - [ ] `docs/guides/api_development.md` - FastAPI development guide
@@ -567,12 +476,11 @@ What to learn next or how to extend this.
 
 | Error Type | Handling Strategy | User Message |
 |------------|------------------|-------------|
-| **Azure API Failure** | Retry 3x with exponential backoff (1s, 2s, 4s) | "Azure API unavailable. Retrying... (attempt X/3)" |
-| **Azure Quota Exceeded** | Catch HTTP 429, log error, suggest free tier limits | "Custom Vision quota exceeded (10K/month). Try tomorrow or upgrade tier." |
 | **Invalid Image** | Validate format (JPEG/PNG), resolution (≥640x480) | "Invalid image: {filename}. Must be JPEG/PNG, min 640x480 resolution." |
 | **Missing File** | Check path exists before processing | "File not found: {path}. Check file path and try again." |
 | **Network Timeout** | Set 30s timeout, catch exception | "Request timed out after 30s. Check internet connection." |
 | **Model Not Trained** | Check model exists before inference | "Model not found. Train model first using notebook section 2." |
+| **YOLO Training Failure** | Save checkpoints every 10 epochs | "Training stopped at epoch X. Resuming from checkpoint." |
 
 **Error Logging**:
 - Log all errors to console with timestamp
@@ -580,9 +488,9 @@ What to learn next or how to extend this.
 - Phase 4: Add structured logging to file (`logs/app.log`)
 
 **Recovery Strategies**:
-- Azure API: Implement retry with exponential backoff
-- Training failures: Save checkpoints every 10 epochs (YOLO)
+- Training failures: Save checkpoints every 10 epochs (YOLO auto-checkpoint)
 - Dataset download: Resume interrupted downloads (use `wget -c` or `requests` with Range headers)
+- YOLO inference errors: Fallback to CPU if GPU fails
 
 ### Testing Standards
 
@@ -612,23 +520,22 @@ def test_detect_invalid_image_path():
 
 ### Schema Overview
 
-**5 SQLite Tables** (3NF normalized):
+**3 SQLite Tables** (3NF normalized):
 
 | Table | Purpose | Key Fields |
 |-------|---------|------------|
-| **products** | Product catalog with SKU metadata | id, sku, name, category_id, expected_price |
-| **categories** | Product categories | id, name, description |
 | **analysis_jobs** | Tracks ML analysis runs | id, image_path, challenge_type, status, created_at |
-| **detections** | Individual product detections | id, analysis_job_id, sku, bbox (x/y/w/h), confidence |
-| **price_history** | Price observations over time | id, sku, detected_price, confidence, detected_at |
+| **detections** | Individual object detections | id, analysis_job_id, bbox (x/y/w/h), confidence |
+| **categories** | Product categories (optional) | id, name, description |
+| **products** | Product catalog (optional) | id, sku, name, category_id |
 
 ### Entity Relationships
 
 ```
-categories (1) ----< (many) products
-products (1) ----< (many) price_history
 analysis_jobs (1) ----< (many) detections
-products (1) ----< (many) detections [soft FK via sku]
+
+Optional (if using product catalog):
+categories (1) ----< (many) products
 ```
 
 ### Sample SQL Queries

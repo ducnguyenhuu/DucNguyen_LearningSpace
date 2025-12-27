@@ -8,18 +8,16 @@
 
 ## Overview
 
-This learning project implements 4 ML challenges (Challenge 1: Out-of-Stock Detection, Challenge 2: Product Recognition, Challenge 3: Stock Estimation, Challenge 4: Price Verification) with a full-stack architecture (PostgreSQL database + FastAPI REST API + ML core). Tasks are organized by user story to enable independent implementation and testing.
+This learning project implements 2 ML challenges (Challenge 1: Out-of-Stock Detection, Challenge 2: Object Counting) with a full-stack architecture (SQLite database + FastAPI REST API + ML core). Tasks are organized by user story to enable independent implementation and testing.
 
-**Note**: The term "User Story" (US1-US4) in this task document corresponds to "Challenge" (Challenge 1-4) in SPECIFICATION.md:
+**Note**: The term "User Story" (US1-US2) in this task document corresponds to "Challenge" (Challenge 1-2) in SPECIFICATION.md:
 - User Story 1 (US1) = Challenge 1: Out-of-Stock Detection
-- User Story 2 (US2) = Challenge 2: Product Recognition
-- User Story 3 (US3) = Challenge 3: Stock Estimation
-- User Story 4 (US4) = Challenge 4: Price Verification
+- User Story 2 (US2) = Challenge 2: Object Counting
 
 **Implementation Strategy**:
 - **MVP First**: Complete User Story 1 (Challenge 1: Out-of-Stock Detection) as minimum viable product
 - **Sequential Delivery**: Each user story is independently testable before moving to next
-- **Database-First**: Set up schema and seed data before ML challenges
+- **Single-Class YOLO**: Train one model for both challenges (object detection → gap analysis + counting)
 - **API Parallel to ML**: Implement API endpoints alongside ML modules
 
 ---
@@ -45,14 +43,11 @@ This learning project implements 4 ML challenges (Challenge 1: Out-of-Stock Dete
 
 - [X] T001 Create virtual environment and install Python 3.10+ dependencies
 - [X] T002 Initialize Git repository structure with .gitignore for data/, models/, .env
-- [X] T003 Create .env.example template with Azure and database credential placeholders
+- [X] T003 Create .env.example template with database credential placeholders
 - [X] T004 Create data/ directory for SQLite database (auto-created by SQLAlchemy)
 - [X] T005 Initialize Alembic for database migrations in alembic/ directory
-- [X] T006 Create Azure subscription and provision Custom Vision F0 resource
-- [X] T007 Create Azure Document Intelligence F0 resource
-- [X] T008 Configure .env file with Azure credentials and database connection string
-- [X] T008a [P] Create .specify/plans/data-model.md with 8 entity definitions (5 DB tables: categories, products, analysis_jobs, detections, price_history + 3 dataclasses: Detection, GapRegion, StockCount)
-- [X] T008b [P] Create .specify/plans/contracts/ directory with 7 Python module interface contracts (detector.py, classifier.py, stock_analyzer.py, ocr.py, products.py, analysis.py, crud.py)
+- [X] T008a [P] Create .specify/plans/data-model.md with entity definitions (3 DB tables: analysis_jobs, detections, optional products/categories + 2 dataclasses: Detection, GapRegion)
+- [X] T008b [P] Create .specify/plans/contracts/ directory with Python module interface contracts (detector.py, counter.py, yolo.py, analysis.py, crud.py)
 
 ### Foundational Tasks (Blocking Prerequisites)
 
@@ -61,18 +56,18 @@ This learning project implements 4 ML challenges (Challenge 1: Out-of-Stock Dete
 - [X] T011 [P] Create Pydantic schemas in src/shelf_monitor/database/schemas.py for validation
 - [X] T012 [P] Implement CRUD operations in src/shelf_monitor/database/crud.py
 - [X] T013 [P] Create database session management in src/shelf_monitor/database/session.py
-- [ ] T014 Generate first Alembic migration for all 5 database tables
-- [ ] T015 Apply database migrations (alembic upgrade head) to create schema
-- [ ] T016 [P] Download SKU-110K dataset (11,762 images) to data/raw/SKU110K/ using scripts/download_dataset.py
-- [ ] T017 [P] Preprocess dataset and split 70/15/15 (train/val/test) using scripts/prepare_data.py
-- [ ] T018 Seed product catalog from SKU-110K annotations using scripts/seed_products.py
-- [ ] T019 [P] Create FastAPI app skeleton in src/shelf_monitor/api/main.py with CORS
-- [ ] T020 [P] Implement dependency injection for database sessions in src/shelf_monitor/api/dependencies.py
-- [ ] T021 [P] Create health check router in src/shelf_monitor/api/routers/health.py
-- [ ] T022 [P] Implement configuration management in src/shelf_monitor/config/settings.py
-- [ ] T023 [P] Set up logging utilities in src/shelf_monitor/utils/logging.py
-- [ ] T024 Verify FastAPI server starts and /api/v1/health endpoint returns 200
-- [ ] T024a [P] Create .specify/plans/quickstart.md with installation steps, database setup, API startup commands, and Challenge 1 walkthrough example
+- [X] T014 Generate first Alembic migration for all 5 database tables
+- [X] T015 Apply database migrations (alembic upgrade head) to create schema
+- [X] T016 [P] Download SKU-110K dataset (11,762 images) to data/raw/SKU110K/ using scripts/download_dataset.py
+- [X] T017 [P] Preprocess dataset and split 70/15/15 (train/val/test) using scripts/prepare_data.py
+- [X] T018 Seed product catalog (optional - 10 sample products for demo purposes)
+- [X] T019 [P] Create FastAPI app skeleton in src/shelf_monitor/api/main.py with CORS
+- [X] T020 [P] Implement dependency injection for database sessions in src/shelf_monitor/api/dependencies.py
+- [X] T021 [P] Create health check router in src/shelf_monitor/api/routers/health.py
+- [X] T022 [P] Implement configuration management in src/shelf_monitor/config/settings.py
+- [X] T023 [P] Set up logging utilities in src/shelf_monitor/utils/logging.py
+- [X] T024 Verify FastAPI server starts and /api/v1/health endpoint returns 200
+- [X] T024a [P] Create .specify/plans/quickstart.md with installation steps, database setup, API startup commands, and Challenge 1 walkthrough example
 
 ---
 
@@ -81,7 +76,7 @@ This learning project implements 4 ML challenges (Challenge 1: Out-of-Stock Dete
 **User Story**: As a store manager, I want to detect empty shelf spaces so I can restock products before customers notice.
 
 **Acceptance Criteria**:
-- Azure Custom Vision model trained to detect product bounding boxes
+- YOLOv8s model trained on SKU-110K single "object" class
 - Gap detection algorithm identifies empty spaces >100px width
 - REST API endpoint accepts image uploads and returns analysis results
 - Detection results persisted to database (AnalysisJob + Detection tables)
@@ -92,212 +87,116 @@ This learning project implements 4 ML challenges (Challenge 1: Out-of-Stock Dete
 
 ### US1 Implementation Tasks
 
-- [ ] T025 [P] [US1] Create Detection dataclass in src/shelf_monitor/core/detector.py
+- [X] T025 [P] [US1] Create Detection dataclass in src/shelf_monitor/core/detector.py
 - [ ] T026 [P] [US1] Create GapRegion dataclass in src/shelf_monitor/core/detector.py
-- [ ] T027 [US1] Implement ProductDetector.__init__() with Azure Custom Vision client
-- [ ] T028 [US1] Upload 2,800 training images to Custom Vision project "OOS Detection" (use stratified random sample from SKU-110K train set, maintaining category distribution)
-- [ ] T029 [US1] Train Custom Vision model (Iteration 1 with first 500 images from uploaded set)
-- [ ] T030 [US1] Evaluate Custom Vision Iteration 1 and document metrics
-- [ ] T031 [US1] Train Iteration 2-3 incrementally (1,500 → 2,800 images)
-- [ ] T032 [US1] Publish Custom Vision iteration for prediction endpoint
-- [ ] T033 [US1] Implement ProductDetector.detect_products() with retry logic (3x exponential backoff)
-- [ ] T034 [P] [US1] Implement ProductDetector.detect_gaps() algorithm (sort by x, compute gaps, flag >100px)
-- [ ] T035 [P] [US1] Create Azure Custom Vision service wrapper in src/shelf_monitor/services/azure_custom_vision.py
-- [ ] T036 [P] [US1] Implement analysis router in src/shelf_monitor/api/routers/analysis.py (POST /detect with synchronous blocking processing for Phase 1)
-- [ ] T037 [P] [US1] Create detections router in src/shelf_monitor/api/routers/detections.py (GET /detections)
-- [ ] T038 [US1] Implement analysis job submission workflow (save image, create AnalysisJob, queue processing)
-- [ ] T039 [US1] Implement ML processing task (detect products, detect gaps, save Detection records)
-- [ ] T040 [P] [US1] Create unit tests in tests/unit/test_detector.py for gap detection logic
-- [ ] T041 [P] [US1] Create integration tests in tests/integration/test_api_analysis.py for /detect endpoint
-- [ ] T042 [P] [US1] Create Jupyter notebook notebooks/01_out_of_stock_detection.ipynb with 5 sections
-- [ ] T043 [US1] Write implementation guide docs/guides/challenge_1_oos_detection.md (What/Why/How/Usage)
-- [ ] T044 [US1] Run tests and verify Precision >90%, Recall >85% on test set
-- [ ] T045 [US1] Commit Challenge 1 implementation with descriptive message
+- [ ] T027 [US1] Implement ProductDetector.__init__() to load YOLO model
+- [ ] T028 [US1] Train YOLOv8s model on SKU-110K (50 epochs, single "object" class)
+- [ ] T029 [US1] Evaluate YOLO model on test set (Precision, Recall, mAP@0.5)
+- [ ] T030 [US1] Save best model checkpoint to models/yolo_sku110k_best.pt
+- [ ] T031 [US1] Implement ProductDetector.detect_products() using YOLO inference
+- [ ] T032 [P] [US1] Implement ProductDetector.detect_gaps() algorithm (sort by x, compute gaps, flag >100px)
+- [ ] T033 [P] [US1] Create YOLO wrapper in src/shelf_monitor/models/yolo.py
+- [ ] T034 [P] [US1] Implement analysis router in src/shelf_monitor/api/routers/analysis.py (POST /detect-gaps)
+- [ ] T035 [P] [US1] Create detections router in src/shelf_monitor/api/routers/detections.py (GET /detections)
+- [ ] T036 [US1] Implement analysis job submission workflow (save image, create AnalysisJob, queue processing)
+- [ ] T037 [US1] Implement ML processing task (detect products, detect gaps, save Detection records)
+- [ ] T038 [P] [US1] Create unit tests in tests/unit/test_detector.py for gap detection logic
+- [ ] T039 [P] [US1] Create integration tests in tests/integration/test_api_analysis.py for /detect-gaps endpoint
+- [ ] T040 [P] [US1] Create Jupyter notebook notebooks/01_out_of_stock_detection.ipynb with 5 sections
+- [ ] T041 [US1] Write implementation guide docs/guides/challenge_1_oos_detection.md (What/Why/How/Usage)
+- [ ] T042 [US1] Run tests and verify Precision >90%, Recall >85% on test set
+- [ ] T043 [US1] Commit Challenge 1 implementation with descriptive message
 
 **Parallel Opportunities**:
-- T025-T026 (dataclasses) + T035 (Azure service) + T036-T037 (API routers) can run concurrently
-- T040-T042 (tests + notebook) can run after T034 (core logic complete)
+- T025-T026 (dataclasses) + T033 (YOLO wrapper) + T034-T035 (API routers) can run concurrently
+- T038-T040 (tests + notebook) can run after T032 (core logic complete)
 
 ---
 
-## Phase 3: User Story 2 - Product Recognition (Challenge 2)
+## Phase 3: User Story 2 - Object Counting (Challenge 2)
 
-**User Story**: As a store manager, I want to identify specific products on shelves so I can track inventory per SKU.
+**User Story**: As a store manager, I want to count total objects on shelves so I can track inventory levels and shelf occupancy.
 
 **Acceptance Criteria**:
-- YOLOv8s model trained on full SKU-110K dataset (8,233 train images)
-- SKU classification accuracy >90%, mAP@0.5 >85%
-- Inference speed >10 FPS on GPU (M1/M2 or NVIDIA 6GB+ VRAM)
-- API endpoint returns product detections with SKU labels
-- Detection results linked to products table via SKU foreign key
-- Jupyter notebook compares Azure Custom Vision vs YOLO performance
-- Implementation guide documents YOLO training process
+- Reuse YOLO model from Challenge 1 (no additional training)
+- Simple counting logic (len(detections))
+- API endpoint returns total count from image
+- Database stores count history for trending
+- Jupyter notebook demonstrates counting and visualization
+- Metrics: Count accuracy >95%, processing time <100ms
 
-**Independent Test Criteria**: Upload shelf image → API returns SKU labels → Database links detections to products → Compare metrics in notebook
+**Independent Test Criteria**: Upload shelf image → API returns total count → Database logs count with timestamp → Notebook shows trends
 
 ### US2 Implementation Tasks
 
-- [ ] T046 [P] [US2] Create SKUClassifier class skeleton in src/shelf_monitor/core/classifier.py
-- [ ] T047 [P] [US2] Create YOLOv8 wrapper in src/shelf_monitor/models/yolo.py
-- [ ] T048 [US2] Convert SKU-110K annotations from COCO to YOLO format
-- [ ] T049 [US2] Create data.yaml configuration for YOLOv8 training
-- [ ] T050 [US2] Train YOLOv8s model (50 epochs, batch 16, pretrained COCO weights)
-- [ ] T051 [US2] Monitor training progress and save checkpoints every 10 epochs
-- [ ] T052 [US2] Evaluate YOLOv8 model on test set (mAP@0.5, inference FPS)
-- [ ] T053 [US2] Implement SKUClassifier.classify_products() using YOLOv8 model
-- [ ] T054 [P] [US2] Implement SKUClassifier.evaluate_model() for metrics calculation
-- [ ] T055 [US2] Upload 1,200 images to Custom Vision project "Product Recognition"
-- [ ] T056 [US2] Train Custom Vision classifier (Iterations 1-3, incremental)
-- [ ] T057 [US2] Compare Custom Vision vs YOLO performance (accuracy, speed, cost)
-- [ ] T058 [P] [US2] Update analysis router to support PRODUCT_RECOGNITION challenge type
-- [ ] T059 [US2] Implement SKU classification workflow (classify → link to products table → save Detection)
-- [ ] T060 [P] [US2] Create unit tests in tests/unit/test_classifier.py for classification logic
-- [ ] T061 [P] [US2] Create integration tests for product recognition API endpoint
-- [ ] T062 [P] [US2] Create Jupyter notebook notebooks/02_product_recognition.ipynb with YOLO training + comparison
-- [ ] T063 [US2] Write implementation guide docs/guides/challenge_2_product_recognition.md
-- [ ] T064 [US2] Write YOLO training guide docs/guides/yolo_training.md
-- [ ] T065 [US2] Run tests and verify mAP@0.5 >85%, accuracy >90%
-- [ ] T066 [US2] Commit Challenge 2 implementation
+- [ ] T044 [P] [US2] Create ObjectCounter class in src/shelf_monitor/core/counter.py
+- [ ] T045 [P] [US2] Create CountResult dataclass with total_count, confidence_threshold fields
+- [ ] T046 [P] [US2] Implement ObjectCounter.count_objects() (reuse YOLO detections, apply confidence filter)
+- [ ] T047 [P] [US2] Implement ObjectCounter.calculate_occupancy() (count / estimated_capacity)
+- [ ] T048 [US2] Create count_history table in database (job_id, count, occupancy_rate, timestamp)
+- [ ] T049 [US2] Generate Alembic migration for count_history table
+- [ ] T050 [US2] Apply migration (alembic upgrade head)
+- [ ] T051 [P] [US2] Add CRUD operations for count_history in crud.py
+- [ ] T052 [P] [US2] Update analysis router to support OBJECT_COUNTING challenge type (POST /count-objects)
+- [ ] T053 [US2] Implement counting workflow (detect → filter by confidence → count → save to count_history)
+- [ ] T054 [P] [US2] Create unit tests in tests/unit/test_counter.py for counting logic
+- [ ] T055 [P] [US2] Create integration tests for /count-objects API endpoint
+- [ ] T056 [P] [US2] Create Jupyter notebook notebooks/02_object_counting.ipynb with counting demo and trends
+- [ ] T057 [US2] Write implementation guide docs/guides/challenge_2_object_counting.md
+- [ ] T058 [US2] Run tests and verify count accuracy >95%
+- [ ] T059 [US2] Commit Challenge 2 implementation
 
 **Parallel Opportunities**:
-- T046-T047 (class skeletons) + T048-T049 (data prep) can start immediately
-- T055-T056 (Custom Vision) parallel to T050-T052 (YOLO training)
-- T060-T062 (tests + notebook) parallel after T053 complete
+- T044-T047 (counter class) + T048-T051 (database) can start immediately
+- T054-T056 (tests + notebook) parallel after T046 complete
 
-**Dependencies**: T058-T059 depend on T053 (classifier implementation)
+**Dependencies**: T052-T053 depend on T046 (counter implementation) and T051 (CRUD operations)
 
 ---
 
-## Phase 4: User Story 3 - Stock Level Estimation (Challenge 3)
+## Phase 4: Polish & Documentation
 
-**User Story**: As a store manager, I want to know product quantities on shelves so I can plan restocking schedules.
+**Goal**: Finalize documentation, improve code quality, and prepare for demo.
 
-**Acceptance Criteria**:
-- Stock counting algorithm aggregates detections per SKU
-- Count accuracy >90%, MAPE <15%
-- Depth estimation heuristic (Phase 1: depth=1, Phase 2+: analyze heights)
-- API endpoint returns product counts from analysis job
-- Database query aggregates detections by SKU efficiently
-- Jupyter notebook demonstrates counting logic and trend tracking
-- Implementation guide explains aggregation algorithms
+### Polish Tasks
 
-**Independent Test Criteria**: Submit analysis → API returns counts per SKU → Database aggregation query matches → Notebook visualizes stock levels
+- [ ] T060 [P] Write docs/guides/yolo_training.md (YOLO setup, training, evaluation)
+- [ ] T061 [P] Write docs/guides/database_design.md (schema, relationships, queries)
+- [ ] T062 [P] Write docs/guides/api_development.md (FastAPI patterns, testing)
+- [ ] T063 [P] Update README.md with installation, setup, and usage instructions
+- [ ] T064 [P] Create .specify/plans/quickstart.md with end-to-end walkthrough
+- [ ] T065 [US1+US2] Add input validation to API endpoints (image format, size limits)
+- [ ] T066 [US1+US2] Add error handling with retry logic for YOLO inference
+- [ ] T067 [US1+US2] Improve logging with structured format (timestamp, level, context)
+- [ ] T068 [US1+US2] Add API rate limiting (10 requests/minute for demo)
+- [ ] T069 Run full test suite (pytest tests/) and verify >70% coverage
+- [ ] T070 Run code quality checks (black, flake8, mypy)
+- [ ] T071 Final review of all documentation for completeness
+- [ ] T072 Create demo video/presentation materials (optional)
 
-### US3 Implementation Tasks
+**Parallel Opportunities**: T060-T064 (documentation) can all run in parallel
 
-- [ ] T067 [P] [US3] Create ProductCount dataclass in src/shelf_monitor/core/stock_analyzer.py
-- [ ] T068 [P] [US3] Create StockAnalyzer class in src/shelf_monitor/core/stock_analyzer.py
-- [ ] T069 [P] [US3] Implement StockAnalyzer.count_products() (group by SKU, count occurrences)
-- [ ] T070 [P] [US3] Implement StockAnalyzer.estimate_depth() (Phase 1: return 1)
-- [ ] T071 [P] [US3] Create database query in crud.py to aggregate detections by SKU
-- [ ] T072 [US3] Update analysis router to support STOCK_ESTIMATION challenge type
-- [ ] T073 [US3] Implement stock estimation workflow (classify → count → save aggregated results)
-- [ ] T074 [P] [US3] Create unit tests in tests/unit/test_stock_analyzer.py for counting logic
-- [ ] T075 [P] [US3] Create integration tests for stock estimation API endpoint
-- [ ] T076 [P] [US3] Create Jupyter notebook notebooks/03_stock_level_estimation.ipynb with counting demo
-- [ ] T077 [US3] Write implementation guide docs/guides/challenge_3_stock_estimation.md
-- [ ] T078 [US3] Run tests and verify count accuracy >90%, MAPE <15%
-- [ ] T079 [US3] Commit Challenge 3 implementation
+---
+
+## Task Summary
+
+**Total Tasks**: 72 (simplified from 126)  
+**Current Progress**: 18 complete (25%)  
+**Remaining**: 54 tasks
+
+**By Phase**:
+- Phase 1 (Setup): 18/18 complete ✅
+- Phase 2 (Challenge 1): 0/19 tasks
+- Phase 3 (Challenge 2): 0/16 tasks  
+- Phase 4 (Polish): 0/13 tasks
+
+**Estimated Timeline**: 4-6 weeks (vs original 10 weeks)
 
 **Parallel Opportunities**:
 - T067-T070 (core logic) all parallelizable (different methods)
 - T074-T076 (tests + notebook) parallel after T069-T070 complete
 
 **Dependencies**: T072-T073 depend on Challenge 2 (need SKU classifications)
-
----
-
-## Phase 5: User Story 4 - Price Tag Verification (Challenge 4)
-
-**User Story**: As a store manager, I want to verify price tags match expected prices so I can avoid customer complaints and fines.
-
-**Acceptance Criteria**:
-- Azure Document Intelligence Read API extracts text from price tags
-- Price parsing regex handles multiple formats ($X.XX, €X,XX, £X.XX)
-- OCR confidence threshold >0.8 for accepted prices
-- Price history tracked over time in price_history table
-- API endpoint returns price verification results
-- Jupyter notebook demonstrates OCR + parsing + database tracking
-- Implementation guide explains regex patterns and confidence filtering
-
-**Independent Test Criteria**: Upload image with price tags → API extracts prices → Database stores in price_history → Notebook shows parsing accuracy >90%
-
-### US4 Implementation Tasks
-
-- [ ] T080 [P] [US4] Create PriceTag dataclass in src/shelf_monitor/core/ocr.py
-- [ ] T081 [P] [US4] Create PriceOCR class in src/shelf_monitor/core/ocr.py
-- [ ] T082 [P] [US4] Implement PriceOCR.__init__() with Document Intelligence client
-- [ ] T083 [P] [US4] Implement PriceOCR.extract_prices() with retry logic (rate limit handling)
-- [ ] T084 [P] [US4] Implement PriceOCR.parse_price() with regex patterns for $, €, £
-- [ ] T085 [P] [US4] Create Azure Document Intelligence service wrapper in src/shelf_monitor/services/azure_document_intelligence.py
-- [ ] T086 [P] [US4] Create CRUD operations for price_history table in crud.py
-- [ ] T087 [US4] Update analysis router to support PRICE_VERIFICATION challenge type
-- [ ] T088 [US4] Implement price verification workflow (OCR → parse → compare → save price_history)
-- [ ] T089 [P] [US4] Create unit tests in tests/unit/test_ocr.py for price parsing logic
-- [ ] T090 [P] [US4] Create integration tests for price verification API endpoint
-- [ ] T091 [P] [US4] Create Jupyter notebook notebooks/04_price_tag_verification.ipynb with OCR demo
-- [ ] T092 [US4] Write implementation guide docs/guides/challenge_4_price_verification.md
-- [ ] T093 [US4] Run tests and verify OCR accuracy >95%, price extraction >90%
-- [ ] T094 [US4] Commit Challenge 4 implementation
-
-**Parallel Opportunities**:
-- T080-T085 (core logic) all parallelizable (dataclass, OCR, parsing separate)
-- T089-T091 (tests + notebook) parallel after T083-T084 complete
-
-**Dependencies**: T087-T088 depend on T083-T084 (OCR + parsing logic)
-
----
-
-## Phase 6: Polish & Cross-Cutting Concerns
-
-**Goal**: Complete API endpoints, testing infrastructure, documentation, and production-ready features.
-
-### API Completion Tasks
-
-- [ ] T095 [P] Create products router in src/shelf_monitor/api/routers/products.py (5 endpoints)
-- [ ] T096 [P] Implement POST /api/v1/products (create product)
-- [ ] T097 [P] Implement GET /api/v1/products (list with pagination)
-- [ ] T098 [P] Implement GET /api/v1/products/{sku} (get by SKU)
-- [ ] T099 [P] Implement PUT /api/v1/products/{sku} (update product)
-- [ ] T100 [P] Implement DELETE /api/v1/products/{sku} (delete product)
-- [ ] T101 [P] Create integration tests in tests/integration/test_api_products.py for all product endpoints
-- [ ] T102 [P] Create integration tests in tests/integration/test_database_crud.py for CRUD operations
-
-### Testing Infrastructure
-
-- [ ] T103 [P] Set up pytest configuration in pytest.ini with coverage settings
-- [ ] T104 [P] Create conftest.py with test database fixtures (SQLite in-memory)
-- [ ] T105 [P] Create FastAPI TestClient fixture for API tests
-- [ ] T106 Run full test suite and verify >70% coverage for core/ and api/ modules
-- [ ] T107 Fix any failing tests and improve coverage for critical paths
-
-### Documentation Completion
-
-- [ ] T108 [P] Write Azure setup guide docs/guides/azure_setup.md (resource creation, API keys)
-- [ ] T109 [P] Write database design guide docs/guides/database_design.md (schema, SQL queries, migrations)
-- [ ] T110 [P] Write API development guide docs/guides/api_development.md (FastAPI patterns, Pydantic, dependencies)
-- [ ] T111 Update README.md with quickstart instructions and project overview
-- [ ] T112 Create docs/ARCHITECTURE.md with full-stack architecture diagram
-- [ ] T113 Review all 4 challenge notebooks for clarity and educational value
-
-### Production Features (Optional - Week 11-12)
-
-- [ ] T114 [P] Implement quota monitoring in azure_custom_vision.py (warn at 80% usage)
-- [ ] T115 [P] Add structured logging to file (logs/app.log) with rotation
-- [ ] T116 [P] Create image validation utilities in src/shelf_monitor/utils/image.py
-- [ ] T117 Implement background job processing for async analysis (optional: Celery)
-- [ ] T118 Add Azure ML pipeline for model retraining (optional: MLOps)
-- [ ] T119 Deploy model to Azure Container Instances for inference (optional)
-
-### Final Validation
-
-- [ ] T120 Run all 4 notebooks end-to-end and verify outputs
-- [ ] T121 Test all API endpoints via Swagger UI (/docs)
-- [ ] T122 Verify database migrations work (alembic downgrade -1, upgrade head)
-- [ ] T123 Review code quality: PEP 8, type hints, docstrings, <50 LOC functions
-- [ ] T124 Check educational error messages (what + why + fix format)
-- [ ] T125 Verify all 8 implementation guides complete (6 ML + azure_setup + database_design + api_development)
-- [ ] T126 Final commit: "Complete retail shelf monitoring learning project"
 
 ---
 
@@ -310,27 +209,23 @@ Setup (T001-T008)
   ↓
 Foundational (T009-T024) [BLOCKING - must complete before user stories]
   ↓
-User Story 1 (T025-T045) [MVP - Out-of-Stock Detection]
+User Story 1 (T025-T043) [MVP - Out-of-Stock Detection]
   ↓
-User Story 2 (T046-T066) [Product Recognition - depends on US1 database schema]
+User Story 2 (T044-T059) [Object Counting - reuses YOLO from US1]
   ↓
-User Story 3 (T067-T079) [Stock Estimation - depends on US2 classifications]
-  ↓
-User Story 4 (T080-T094) [Price Verification - independent, can run parallel to US3]
-  ↓
-Polish (T095-T126) [Cross-cutting concerns after all stories complete]
+Polish (T060-T072) [Documentation and code quality]
 ```
 
 ### Critical Path
 
 The minimum viable product (MVP) requires:
 1. **Setup** (T001-T008): 1 week
-2. **Foundational** (T009-T024): 1-2 weeks
-3. **User Story 1** (T025-T045): 2 weeks
+2. **Foundational** (T009-T024): 1-2 weeks  
+3. **User Story 1** (T025-T043): 2 weeks
 
 **MVP Timeline**: 4-5 weeks for working out-of-stock detection with database persistence and API.
 
-Full project completion: 12 weeks (includes all 4 challenges + backend + documentation).
+Full project completion: 6 weeks (includes both challenges + backend + documentation).
 
 ---
 
@@ -338,23 +233,39 @@ Full project completion: 12 weeks (includes all 4 challenges + backend + documen
 
 ### During User Story 1 (Challenge 1)
 
-**Parallel Set 1** (after T027 complete):
+**Parallel Set 1** (YOLO training period T028-T030):
 ```
-Terminal 1: T028-T032 (Custom Vision training - 5 iterations, ~2-3 hours)
-Terminal 2: T034 (Gap detection algorithm implementation)
-Terminal 3: T035 (Azure service wrapper)
-Terminal 4: T036-T037 (API routers)
+Terminal 1: T028 (YOLO training - 50 epochs, ~2-3 hours)
+Terminal 2: T032 (Gap detection algorithm implementation)
+Terminal 3: T033 (YOLO wrapper)
+Terminal 4: T034-T035 (API routers)
 ```
 
-**Parallel Set 2** (after T034 complete):
+**Parallel Set 2** (after T032 complete):
 ```
-Terminal 1: T040 (Unit tests for gap detection)
-Terminal 2: T041 (Integration tests for API)
-Terminal 3: T042 (Jupyter notebook creation)
-Terminal 4: T043 (Implementation guide documentation)
+Terminal 1: T038 (Unit tests for gap detection)
+Terminal 2: T039 (Integration tests for API)
+Terminal 3: T040 (Jupyter notebook creation)
+Terminal 4: T041 (Implementation guide documentation)
 ```
 
 ### During User Story 2 (Challenge 2)
+
+**Parallel Set 1** (after T046 complete):
+```
+Terminal 1: T048-T051 (Database schema + CRUD)
+Terminal 2: T052 (API router update)
+Terminal 3: T054-T055 (Tests)
+Terminal 4: T056 (Jupyter notebook)
+```
+
+**Parallel Set 2** (documentation):
+```
+Terminal 1: T060 (YOLO training guide)
+Terminal 2: T061 (Database design guide)
+Terminal 3: T062 (API development guide)
+Terminal 4: T063-T064 (README + quickstart)
+```
 
 **Parallel Set 1** (after data prep T048-T049):
 ```

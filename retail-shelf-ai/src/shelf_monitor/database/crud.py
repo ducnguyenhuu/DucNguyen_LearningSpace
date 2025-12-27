@@ -70,6 +70,25 @@ def get_category(db: Session, category_id: int) -> Optional[Category]:
     """
     return db.query(Category).filter(Category.id == category_id).first()
 
+def get_categories(db: Session, skip: int = 0, limit: int = 100) -> List[Category]:
+    """
+    Get all categories with pagination.
+
+    Args:
+        db: Database session
+        skip: Number of records to skip
+        limit: Maximum number of records
+
+    Returns:
+        List of Category objects
+
+    Example:
+        >>> categories = get_categories(db, limit=50)
+        >>> for cat in categories:
+        ...     print(cat.name)
+    """
+    return db.query(Category).offset(skip).limit(limit).all()
+
 # CRUD operations for Category
 def create_category(db: Session, name: str, description: Optional[str]) -> Category:
     """
@@ -172,8 +191,8 @@ def create_product(db: Session,
                    name: str, 
                    category_id: int, 
                    expected_price: float, 
-                   barcode: Optional[str], 
-                   image_url: Optional[str]) -> Product:
+                   barcode: Optional[str] = None, 
+                   image_url: Optional[str] = None) -> Product:
     """
     Create a new product.
 

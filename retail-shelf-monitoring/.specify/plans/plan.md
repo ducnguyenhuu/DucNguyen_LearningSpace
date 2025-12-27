@@ -8,10 +8,10 @@
 
 ## Summary
 
-Implement a learning-focused retail shelf monitoring system addressing 4 critical challenges using Azure AI and Computer Vision. The project teaches junior Python developers Azure AI integration, object detection with YOLO, and production Python practices through hands-on implementation with public datasets (SKU-110K, Grocery Store, RPC). Deliverables include working Python modules, Jupyter notebooks for demonstration, and comprehensive educational documentation.
+Implement a learning-focused retail shelf monitoring system addressing 2 critical challenges using Computer Vision. The project teaches junior Python developers object detection with YOLO, and production Python practices through hands-on implementation with SKU-110K public dataset (11,762 images, single "object" class). Deliverables include working Python modules, Jupyter notebooks for demonstration, and comprehensive educational documentation.
 
 **Primary Requirement**: Educational value first, production structure second  
-**Technical Approach**: Sequential implementation (Challenge 1→2→3→4), Phase 1 focus (get working), Azure free tier services, notebook-based demonstration
+**Technical Approach**: Sequential implementation (Challenge 1→Challenge 2), single-class YOLO training, notebook-based demonstration
 
 ---
 
@@ -20,7 +20,6 @@ Implement a learning-focused retail shelf monitoring system addressing 4 critica
 **Language/Version**: Python 3.10+  
 **Primary Dependencies**: 
 - **ML/CV**: PyTorch 2.0+, Ultralytics (YOLOv8), OpenCV, Pillow
-- **Azure**: azure-cognitiveservices-vision-customvision, azure-ai-formrecognizer, azure-ai-ml
 - **Data**: NumPy, Pandas, matplotlib, seaborn
 - **Backend**: FastAPI 0.104+, SQLAlchemy 2.0+, Alembic (migrations), Pydantic
 - **Database**: SQLite 3+ (development and testing)
@@ -28,9 +27,8 @@ Implement a learning-focused retail shelf monitoring system addressing 4 critica
 
 **Storage**: 
 - Local filesystem for datasets (data/)
-- SQLite database for product catalog, SKU metadata, analysis results
-- Azure Blob Storage (optional, Standard LRS, ~$0.20/month)
-- Trained models stored locally (models/)
+- SQLite database for analysis results
+- Trained YOLO models stored locally (models/)
 
 **Testing**: 
 - pytest (unit tests for core ML logic, API endpoints, database operations)
@@ -51,22 +49,19 @@ Implement a learning-focused retail shelf monitoring system addressing 4 critica
 
 **Performance Goals**:
 - Challenge 1: Precision >90%, Recall >85%, <500ms latency (M1/M2 or NVIDIA GPU)
-- Challenge 2: mAP@0.5 >85%, >10 FPS inference (local GPU), classification accuracy >90%
-- Challenge 3: Count accuracy >90%, MAPE <15%
-- Challenge 4: OCR accuracy >95%, price extraction >90%
+- Challenge 2: Count accuracy >95%, <100ms processing time
 
 **Constraints**:
-- **Cost**: $0-20 total (Azure free tiers preferred, optional Azure ML $5-20 for weeks 9-10)
-- **Timeline**: 10 weeks sequential implementation
+- **Cost**: $0 (all free tools and datasets)
+- **Timeline**: 6 weeks sequential implementation
 - **Audience**: Junior Python developers (6-12 months experience)
 - **Complexity**: Simple implementations (<50 LOC per function), no microservices/K8s/real-time streaming
-- **Azure Quotas**: Custom Vision F0 (2 projects, 5K images, 10K predictions/month), Document Intelligence F0 (500 pages/month)
 
 **Scale/Scope**: 
-- 4 ML challenges, ~4,000 training images (SKU-110K subset), 4 notebooks
-- RESTful API with 12-15 endpoints (product CRUD, analysis submission, results retrieval)
-- 5 database tables (products, categories, analysis_jobs, detections, price_history)
-- 8 guide documents (6 ML + azure_setup + api_development + database_design)
+- 2 ML challenges, ~11,000 training images (SKU-110K), 2 notebooks
+- RESTful API with 8-10 endpoints (analysis submission, results retrieval)
+- 3 database tables (analysis_jobs, detections, optional products)
+- 4 guide documents (challenge_1, challenge_2, yolo_training, api_development)
 - Single developer learning project, not production deployment
 
 ---

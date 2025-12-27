@@ -33,9 +33,11 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
+from src.shelf_monitor.config.settings import settings
 
 # Get database URL with fallback to SQLite
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/retail_shelf_monitoring.db")
+#DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/retail_shelf_monitoring.db")
+DATABASE_URL = settings.database_url
 
 # Determine if using SQLite
 is_sqlite = "sqlite" in DATABASE_URL.lower()
