@@ -85,13 +85,13 @@ async def root():
 # Router Registration
 # ============================================================================
 
-from src.shelf_monitor.api.routers import health
+from src.shelf_monitor.api.routers import health, analysis
 
 app.include_router(health.router, prefix="/api/v1", tags=["Health"])
+app.include_router(analysis.router, tags=["Analysis"])
 
-# Future routers (T034-T035):
-# from src.shelf_monitor.api.routers import analysis, detections
-# app.include_router(analysis.router, prefix="/api/v1", tags=["Analysis"])
+# Future routers (T035):
+# from src.shelf_monitor.api.routers import detections
 # app.include_router(detections.router, prefix="/api/v1", tags=["Detections"])
 
 

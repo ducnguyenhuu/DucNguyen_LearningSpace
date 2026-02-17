@@ -1009,7 +1009,7 @@ if __name__ == "__main__":
     
     # Get top 10 Fortune 500 investment recommendations
     print("🏆 Analyzing Top Fortune 500 Companies...")
-    #app.recommend_stocks(count=30, fortune_500=True)
+    #app.recommend_stocks(count=10, fortune_500=True)
     
     print("\n" + "=" * 60)
     
@@ -1027,7 +1027,7 @@ if __name__ == "__main__":
     
     # Test sentiment-enhanced forecasting on a specific Fortune 500 company
     #print("\n🔮 Testing Fortune 500 Stock Forecast...")
-    app.forecast_stock('MSFT', days=7)  # Walmart - #1 Fortune 500
+    app.forecast_stock('NFLX', days=14)  # Walmart - #1 Fortune 500
     
     # Get Financial sector Fortune 500 recommendations
     # app.recommend_stocks(sector='Financial', count=5, fortune_500=True)

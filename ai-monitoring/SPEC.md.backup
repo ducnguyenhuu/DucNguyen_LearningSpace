@@ -1,0 +1,2375 @@
+# AI-Powered System Monitoring & Analysis Platform
+## Requirements & Technical Specification Document
+
+**Version:** 1.0  
+**Date:** February 6, 2026  
+**Status:** Draft  
+**Document Type:** Technical Requirements & Specification
+
+---
+
+## Document Information
+
+**Purpose:** This document defines the requirements, specifications, and design for an intelligent system monitoring and analysis platform that combines observability data from New Relic with source code context from GitHub, analyzed by AI to provide actionable insights and automated recommendations.
+
+**Audience:** Engineering teams, product managers, architects, and stakeholders involved in development and operations.
+
+---
+
+## 📋 Table of Contents
+
+### Part I: Requirements
+1. [Business Requirements](#1-business-requirements)
+2. [Functional Requirements](#2-functional-requirements)
+3. [Non-Functional Requirements](#3-non-functional-requirements)
+4. [User Stories & Use Cases](#4-user-stories--use-cases)
+
+### Part II: System Design
+5. [System Overview](#5-system-overview)
+6. [System Architecture](#6-system-architecture)
+7. [Component Specifications](#7-component-specifications)
+8. [Data Models](#8-data-models)
+9. [Integration Specifications](#9-integration-specifications)
+
+### Part III: Workflows & Operations
+10. [System Workflows](#10-system-workflows)
+11. [AI Analysis Pipeline](#11-ai-analysis-pipeline)
+12. [Execution Modes](#12-execution-modes)
+
+### Part IV: Technical Details
+13. [API Specifications](#13-api-specifications)
+14. [Technology Stack](#14-technology-stack)
+15. [Security & Performance](#15-security--performance)
+16. [Deployment & Operations](#16-deployment--operations)
+
+### Part V: Appendices
+17. [Success Metrics](#17-success-metrics)
+18. [Future Enhancements](#18-future-enhancements)
+19. [Glossary](#19-glossary)
+20. [References](#20-references)
+
+---
+
+# Part I: Requirements
+
+## 1. Business Requirements
+
+### 1.1 Problem Statement
+
+Modern applications generate vast amounts of observability data (metrics, logs, traces), but analyzing this data to identify root causes and determine actionable solutions remains time-consuming and requires significant expertise. Teams face:
+
+- **Reactive Operations:** Issues are discovered only after they impact users
+- **Alert Fatigue:** Too many alerts without context or priority
+- **Slow Incident Resolution:** Hours spent correlating metrics, logs, and code changes
+- **Knowledge Silos:** Only senior engineers can effectively diagnose complex issues
+- **Missed Opportunities:** Performance optimizations and cost savings go unnoticed
+
+### 1.2 Business Objectives
+
+| ID | Objective | Target Metric |
+|----|-----------|---------------|
+| BO-1 | Reduce mean time to resolution (MTTR) for incidents | 50% reduction |
+| BO-2 | Enable proactive issue detection before user impact | 70% of issues detected proactively |
+| BO-3 | Democratize system analysis across engineering team | All engineers can interpret system health |
+| BO-4 | Reduce infrastructure costs through optimization | Identify $500+/month in savings |
+| BO-5 | Decrease manual monitoring time | Save 10+ hours/week per team |
+
+### 1.3 Success Criteria
+
+The system is considered successful if it:
+
+1. **Accuracy:** Provides correct root cause analysis in >85% of cases
+2. **Actionability:** Generates implementable recommendations for >90% of identified issues
+3. **Speed:** Completes analysis within 3 minutes (P95)
+4. **Adoption:** Used regularly by >80% of engineering team
+5. **Impact:** Measurably improves system reliability and reduces costs
+
+---
+
+## 2. Functional Requirements
+
+### 2.1 Core Capabilities
+
+#### FR-1: Data Collection & Aggregation
+
+**Requirement:** The system SHALL collect observability data from New Relic and source code context from GitHub.
+
+**Details:**
+- **FR-1.1:** Collect APM metrics (response time, throughput, error rate, Apdex score)
+- **FR-1.2:** Collect error traces with full stack traces
+- **FR-1.3:** Collect transaction traces showing slow operations
+- **FR-1.4:** Collect infrastructure metrics (CPU, memory, disk, network)
+- **FR-1.5:** Collect application logs with filtering capability
+- **FR-1.6:** Retrieve source code files from GitHub repositories
+- **FR-1.7:** Retrieve recent commit history and changes
+- **FR-1.8:** Support configurable time ranges for data collection
+- **FR-1.9:** Handle rate limits and implement retry logic
+- **FR-1.10:** Normalize data from different sources into unified format
+
+**Priority:** P0 (Critical)  
+**Dependencies:** New Relic API access, GitHub API access
+
+#### FR-2: Health Assessment
+
+**Requirement:** The system SHALL calculate an overall health score for monitored applications.
+
+**Details:**
+- **FR-2.1:** Calculate health score on 0-10 scale based on multiple factors:
+  - Performance metrics (30% weight)
+  - Reliability/error rate (30% weight)
+  - Resource efficiency (20% weight)
+  - User satisfaction/Apdex (20% weight)
+- **FR-2.2:** Classify system status as: Healthy (8-10), Warning (6-8), Critical (<6)
+- **FR-2.3:** Compare current metrics against historical baseline
+- **FR-2.4:** Detect anomalies and deviations from normal behavior
+- **FR-2.5:** Provide health score trends over time
+
+**Priority:** P0 (Critical)
+
+#### FR-3: Issue Detection & Analysis
+
+**Requirement:** The system SHALL automatically detect issues and perform root cause analysis.
+
+**Details:**
+- **FR-3.1:** Detect performance degradations (response time, throughput)
+- **FR-3.2:** Identify error patterns and spikes
+- **FR-3.3:** Detect resource utilization issues
+- **FR-3.4:** Identify database query problems (N+1, slow queries)
+- **FR-3.5:** Detect memory leaks through trend analysis
+- **FR-3.6:** Correlate issues with recent code deployments
+- **FR-3.7:** Link error stack traces to specific source code lines
+- **FR-3.8:** Determine root causes using AI analysis
+- **FR-3.9:** Assess impact of each issue (users affected, severity)
+- **FR-3.10:** Classify issues by category (performance, error, infrastructure, cost)
+
+**Priority:** P0 (Critical)
+
+#### FR-4: AI-Powered Analysis
+
+**Requirement:** The system SHALL use AI/LLM to analyze issues with full context.
+
+**Details:**
+- **FR-4.1:** Build comprehensive context combining metrics, logs, traces, and code
+- **FR-4.2:** Provide relevant code snippets to AI for analysis
+- **FR-4.3:** Include recent commit history in analysis context
+- **FR-4.4:** Use structured prompts for consistent analysis
+- **FR-4.5:** Support multi-stage analysis (quick scan → deep dive)
+- **FR-4.6:** Validate AI recommendations for feasibility
+- **FR-4.7:** Maintain conversation history for follow-up analysis
+- **FR-4.8:** Support different AI models (GPT-4, GPT-4o)
+
+**Priority:** P0 (Critical)  
+**Dependencies:** OpenAI API or equivalent
+
+#### FR-5: Recommendation Generation
+
+**Requirement:** The system SHALL generate actionable recommendations to fix identified issues.
+
+**Details:**
+- **FR-5.1:** Generate specific code fixes with line numbers
+- **FR-5.2:** Provide before/after code comparisons (diffs)
+- **FR-5.3:** Suggest configuration changes with expected impact
+- **FR-5.4:** Recommend infrastructure adjustments
+- **FR-5.5:** Provide implementation steps for each recommendation
+- **FR-5.6:** Include confidence scores for recommendations
+- **FR-5.7:** Explain why each recommendation will help
+- **FR-5.8:** Prioritize recommendations by impact and urgency
+- **FR-5.9:** Suggest preventive measures to avoid recurrence
+
+**Priority:** P0 (Critical)
+
+#### FR-6: Reporting & Notification
+
+**Requirement:** The system SHALL generate reports and send notifications to appropriate channels.
+
+**Details:**
+- **FR-6.1:** Generate structured JSON reports with full analysis
+- **FR-6.2:** Generate human-readable Markdown reports
+- **FR-6.3:** Send alerts to Slack channels
+- **FR-6.4:** Support email notifications
+- **FR-6.5:** Include severity-based alert routing
+- **FR-6.6:** Provide report history and archival
+- **FR-6.7:** Support custom notification templates
+- **FR-6.8:** Include actionable links in notifications
+
+**Priority:** P1 (High)
+
+#### FR-7: Multiple Execution Modes
+
+**Requirement:** The system SHALL support multiple modes of operation.
+
+**Details:**
+- **FR-7.1:** On-demand analysis via CLI
+- **FR-7.2:** Scheduled periodic analysis
+- **FR-7.3:** Event-driven analysis triggered by external events
+- **FR-7.4:** Continuous monitoring mode
+- **FR-7.5:** Post-deployment verification mode
+- **FR-7.6:** Ad-hoc investigation mode with custom parameters
+
+**Priority:** P1 (High)
+
+#### FR-8: Cost Optimization Analysis
+
+**Requirement:** The system SHALL identify opportunities for cost optimization.
+
+**Details:**
+- **FR-8.1:** Analyze resource utilization patterns
+- **FR-8.2:** Identify oversized infrastructure resources
+- **FR-8.3:** Detect inefficient database queries
+- **FR-8.4:** Suggest caching opportunities
+- **FR-8.5:** Estimate cost savings for each recommendation
+- **FR-8.6:** Analyze trends to predict future resource needs
+
+**Priority:** P2 (Medium)
+
+### 2.2 Interface Requirements
+
+#### FR-9: Command Line Interface
+
+**Requirement:** The system SHALL provide a comprehensive CLI.
+
+**Details:**
+- **FR-9.1:** Support analysis commands with configurable parameters
+- **FR-9.2:** Provide status and progress feedback
+- **FR-9.3:** Support output formatting options (JSON, Markdown, plain text)
+- **FR-9.4:** Enable configuration management via CLI
+- **FR-9.5:** Provide help and documentation
+- **FR-9.6:** Support piping and scripting integration
+
+**Priority:** P0 (Critical)
+
+#### FR-10: REST API (Optional Phase 1)
+
+**Requirement:** The system MAY provide a REST API for programmatic access.
+
+**Details:**
+- **FR-10.1:** Trigger analysis via POST endpoint
+- **FR-10.2:** Query analysis status and results
+- **FR-10.3:** Retrieve application health scores
+- **FR-10.4:** Access historical reports
+- **FR-10.5:** Support webhook callbacks for async operations
+- **FR-10.6:** Provide API authentication and authorization
+
+**Priority:** P2 (Medium) - Optional for Phase 1
+
+### 2.3 Configuration Requirements
+
+#### FR-11: Configuration Management
+
+**Requirement:** The system SHALL support flexible configuration.
+
+**Details:**
+- **FR-11.1:** Support YAML configuration files
+- **FR-11.2:** Support environment variables
+- **FR-11.3:** Allow per-application configuration
+- **FR-11.4:** Support configuration validation
+- **FR-11.5:** Provide configuration templates and examples
+- **FR-11.6:** Support multiple environments (dev, staging, prod)
+
+**Priority:** P1 (High)
+
+---
+
+## 3. Non-Functional Requirements
+
+### 3.1 Performance Requirements
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-1 | Analysis completion time (P95) | < 3 minutes |
+| NFR-2 | Quick health check (P95) | < 30 seconds |
+| NFR-3 | API response time (P95) | < 500ms |
+| NFR-4 | Data collection from New Relic | < 30 seconds |
+| NFR-5 | Concurrent application analysis | Support 5+ apps |
+| NFR-6 | System startup time | < 10 seconds |
+
+### 3.2 Reliability Requirements
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-7 | System availability | > 99.5% |
+| NFR-8 | AI recommendation accuracy | > 85% |
+| NFR-9 | Alert precision (true positive rate) | > 90% |
+| NFR-10 | Graceful degradation on API failures | Continue with partial data |
+| NFR-11 | Automatic retry on transient failures | 3 attempts with exponential backoff |
+
+### 3.3 Scalability Requirements
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-12 | Monitored applications | Support 50+ apps |
+| NFR-13 | Concurrent analyses | 10+ parallel |
+| NFR-14 | Historical data retention | 90 days |
+| NFR-15 | Report storage | 1000+ reports |
+
+### 3.4 Security Requirements
+
+| ID | Requirement | Description |
+|----|-------------|-------------|
+| NFR-16 | API key management | Secure storage, never logged or committed |
+| NFR-17 | Sensitive data sanitization | Remove passwords, API keys, PII before AI analysis |
+| NFR-18 | Access control | Role-based access for different operations |
+| NFR-19 | Audit logging | Log all analysis operations with user context |
+| NFR-20 | Secure communication | HTTPS for all external API calls |
+| NFR-21 | Secrets management | Support environment variables and secret managers |
+
+### 3.5 Usability Requirements
+
+| ID | Requirement | Description |
+|----|-------------|-------------|
+| NFR-22 | Setup time | < 30 minutes for initial setup |
+| NFR-23 | Documentation | Comprehensive setup and usage guides |
+| NFR-24 | Error messages | Clear, actionable error messages |
+| NFR-25 | CLI usability | Intuitive commands with helpful feedback |
+| NFR-26 | Report readability | Reports understandable by all engineers |
+
+### 3.6 Maintainability Requirements
+
+| ID | Requirement | Description |
+|----|-------------|-------------|
+| NFR-27 | Code coverage | > 70% test coverage |
+| NFR-28 | Logging | Structured logging with appropriate levels |
+| NFR-29 | Monitoring | Self-monitoring capabilities |
+| NFR-30 | Modularity | Pluggable architecture for extensibility |
+| NFR-31 | Documentation | Inline code documentation and architecture docs |
+
+### 3.7 Operational Requirements
+
+| ID | Requirement | Description |
+|----|-------------|-------------|
+| NFR-32 | Deployment | Support Docker containerization |
+| NFR-33 | Resource usage | < 512MB memory, < 50% CPU (idle) |
+| NFR-34 | Log management | Configurable log levels and rotation |
+| NFR-35 | Health checks | Expose health check endpoints |
+| NFR-36 | Graceful shutdown | Clean shutdown within 30 seconds |
+
+### 3.8 Cost Requirements
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-37 | OpenAI API cost per analysis | < $0.50 |
+| NFR-38 | Total monthly operational cost | < $200 for 10 apps |
+| NFR-39 | Cost optimization ROI | Identify 10x savings vs operational cost |
+
+---
+
+## 4. User Stories & Use Cases
+
+### 4.1 Primary User Personas
+
+**Persona 1: DevOps Engineer (Primary)**
+- Responsible for system reliability and performance
+- Monitors production applications
+- Responds to incidents
+- Needs: Fast root cause identification, actionable fixes
+
+**Persona 2: Software Developer**
+- Writes and deploys application code
+- Wants to understand production impact
+- Needs: Code-level insights, deployment verification
+
+**Persona 3: Engineering Manager**
+- Oversees team and application health
+- Makes decisions on priorities and resources
+- Needs: High-level health overview, trend analysis
+
+### 4.2 User Stories
+
+#### Epic 1: Proactive Monitoring
+
+**US-1.1:** As a DevOps Engineer, I want the system to automatically detect performance degradations so that I can fix issues before users are impacted.
+
+**Acceptance Criteria:**
+- System runs periodic health checks
+- Detects response time increases > 20%
+- Sends alerts to Slack within 5 minutes
+- Includes root cause analysis in alert
+
+**US-1.2:** As a DevOps Engineer, I want to see trends in system health over time so that I can identify gradual degradations.
+
+**Acceptance Criteria:**
+- Health scores tracked daily
+- Visual representation of trends
+- Alerts on sustained degradation
+
+#### Epic 2: Incident Response
+
+**US-2.1:** As a DevOps Engineer responding to an incident, I want AI-powered root cause analysis so that I can quickly understand what's wrong.
+
+**Acceptance Criteria:**
+- On-demand analysis completes in < 3 minutes
+- Analysis includes metrics, logs, and code context
+- Identifies most likely root cause with confidence score
+- Points to specific code locations if applicable
+
+**US-2.2:** As a Software Developer, I want to see exactly which code changes caused a performance regression so that I can fix it quickly.
+
+**Acceptance Criteria:**
+- System correlates metrics with deployments
+- Shows git commit and file diffs
+- Highlights problematic code sections
+- Provides fix suggestions
+
+#### Epic 3: Code-Level Recommendations
+
+**US-3.1:** As a Software Developer, I want specific code fixes with diffs so that I know exactly what to change.
+
+**Acceptance Criteria:**
+- Recommendations include file paths and line numbers
+- Shows before/after code comparison
+- Explains why the fix will help
+- Includes expected performance impact
+
+**US-3.2:** As a DevOps Engineer, I want configuration recommendations so that I can optimize system performance without code changes.
+
+**Acceptance Criteria:**
+- Identifies misconfigured parameters
+- Suggests optimal values
+- Explains impact of changes
+- Includes rollback instructions
+
+#### Epic 4: Cost Optimization
+
+**US-4.1:** As an Engineering Manager, I want to identify cost optimization opportunities so that I can reduce infrastructure spend.
+
+**Acceptance Criteria:**
+- Analyzes resource utilization patterns
+- Identifies oversized instances
+- Estimates monthly savings
+- Prioritizes by ROI
+
+**US-4.2:** As a DevOps Engineer, I want to optimize expensive database queries so that I can reduce database costs.
+
+**Acceptance Criteria:**
+- Identifies slow and frequent queries
+- Suggests query optimizations or indices
+- Shows code locations making queries
+- Estimates performance improvement
+
+#### Epic 5: Post-Deployment Verification
+
+**US-5.1:** As a Software Developer, I want automatic analysis after deployment so that I can verify no regressions were introduced.
+
+**Acceptance Criteria:**
+- Triggered automatically after deployment
+- Compares metrics before/after deployment
+- Alerts on significant changes
+- Completes within 15 minutes of deployment
+
+### 4.3 Detailed Use Cases
+
+#### Use Case 1: Automated Performance Degradation Detection
+
+**Actor:** System (automated)  
+**Trigger:** Scheduled health check (every hour)  
+**Preconditions:** 
+- Application monitored in New Relic
+- GitHub repository configured
+- Baseline metrics established
+
+**Main Flow:**
+1. System fetches last 24h metrics from New Relic
+2. System compares current metrics with baseline
+3. System detects response time increased 35% (200ms → 270ms)
+4. System triggers deep dive analysis
+5. System fetches recent commits from GitHub
+6. System retrieves transaction traces showing slow operations
+7. System correlates slow traces with recent deployment (6 hours ago)
+8. AI analyzes traces and identifies N+1 query in specific controller
+9. AI reviews related code from GitHub
+10. AI generates fix suggestion with code diff
+11. System calculates health score: 7.2/10
+12. System sends Slack alert with findings and recommendations
+13. System stores analysis report for future reference
+
+**Postconditions:**
+- Team notified of issue
+- Root cause identified
+- Fix suggestions provided
+- Analysis logged
+
+**Alternative Flows:**
+- 3a. No significant degradation → Send "all good" summary
+- 8a. Cannot determine root cause → Flag for manual investigation
+- 12a. Slack unavailable → Send email backup notification
+
+#### Use Case 2: On-Demand Incident Investigation
+
+**Actor:** DevOps Engineer  
+**Trigger:** Manual CLI command during incident  
+**Preconditions:**
+- System running and accessible
+- Valid credentials configured
+
+**Main Flow:**
+1. Engineer runs: `ai-monitor analyze --app-id prod-app --deep-dive`
+2. System acknowledges and shows progress
+3. System collects comprehensive data:
+   - Last 4 hours of metrics
+   - Recent error traces
+   - Transaction traces
+   - Last 7 days of commits
+4. System identifies error spike starting 30 minutes ago
+5. System examines error stack traces
+6. AI analyzes error pattern and code
+7. AI identifies unhandled null pointer exception
+8. AI traces to recent refactoring commit
+9. AI generates fix with null check
+10. System generates detailed report
+11. System displays findings in terminal
+12. Engineer reviews recommendations
+
+**Postconditions:**
+- Engineer has actionable information
+- Fix suggestions documented
+- Analysis available for sharing
+
+**Alternative Flows:**
+- 3a. API timeout → Retry with exponential backoff
+- 7a. Multiple potential causes → Rank by likelihood
+- 12a. Engineer requests specific code section → Provide detailed analysis
+
+#### Use Case 3: Cost Optimization Analysis
+
+**Actor:** Engineering Manager  
+**Trigger:** Weekly scheduled cost analysis  
+**Preconditions:**
+- Infrastructure metrics being collected
+- Cost allocation tags configured
+
+**Main Flow:**
+1. System fetches 30-day infrastructure metrics
+2. System analyzes CPU, memory, disk utilization
+3. System identifies database instance at 15% CPU avg
+4. System reviews database query patterns
+5. AI analyzes why utilization is low
+6. AI determines queries are inefficient, causing over-provisioning
+7. AI suggests query optimizations (indices, rewrites)
+8. System calculates potential savings: $800/month
+9. System generates optimization report
+10. System sends report to engineering channel
+11. Manager reviews and prioritizes optimizations
+
+**Postconditions:**
+- Cost savings opportunities identified
+- Recommendations prioritized
+- Team assigned to implement changes
+
+---
+
+# Part II: System Design
+
+## 5. System Overview
+
+### 5.1 System Context
+
+The AI-Powered System Monitoring & Analysis Platform sits between observability tools (New Relic), version control (GitHub), and AI services (OpenAI), providing intelligent analysis and recommendations to engineering teams.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     External Systems                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  ┌────────────────┐  ┌────────────────┐  ┌───────────────┐ │
+│  │  New Relic     │  │    GitHub      │  │  OpenAI API   │ │
+│  │  - Metrics     │  │  - Source Code │  │  - GPT-4/4o   │ │
+│  │  - Logs        │  │  - Commits     │  │  - Analysis   │ │
+│  │  - Traces      │  │  - Diffs       │  │               │ │
+│  └───────┬────────┘  └───────┬────────┘  └───────┬───────┘ │
+│          │                   │                    │         │
+└──────────┼───────────────────┼────────────────────┼─────────┘
+           │                   │                    │
+           │   MCP Protocol    │   MCP Protocol     │   REST API
+           │                   │                    │
+┌──────────▼───────────────────▼────────────────────▼─────────┐
+│                                                               │
+│            AI Monitoring & Analysis Platform                 │
+│                                                               │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │  Data Collection → AI Analysis → Recommendations        ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                               │
+└───────────┬───────────────────────────────────────────────────┘
+            │
+            │   Outputs
+            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Delivery Channels                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
+│  │  Slack   │  │  Email   │  │  CLI     │  │  Reports   │  │
+│  │  Alerts  │  │  Digest  │  │  Output  │  │  (JSON/MD) │  │
+│  └──────────┘  └──────────┘  └──────────┘  └────────────┘  │
+│                                                               │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### 5.2 Key Principles
+
+1. **Context-Aware Analysis:** Combine metrics with code context for deeper insights
+2. **Actionable Output:** Every issue includes specific, implementable recommendations
+3. **Proactive Operation:** Detect issues before they impact users
+4. **Intelligent Prioritization:** Focus on high-impact issues
+5. **Continuous Learning:** Improve analysis based on outcomes
+6. **Extensible Design:** Easy to add new data sources and analyzers
+
+### 5.3 System Boundaries
+
+**In Scope:**
+- Collecting observability data from New Relic
+- Fetching source code and history from GitHub
+- AI-powered analysis using OpenAI
+- Generating recommendations and reports
+- Sending notifications to Slack/Email
+- CLI interface for operations
+
+**Out of Scope (Phase 1):**
+- Web-based dashboard UI
+- Automatic code deployment/PR creation
+- Real-time streaming analysis
+- Custom AI model training
+- Support for observability platforms other than New Relic
+- Support for version control systems other than GitHub
+
+---
+
+## 2. System Architecture
+
+### 2.1 High-Level Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        External Data Sources                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌─────────────────┐         ┌─────────────────┐               │
+│  │  New Relic APM  │         │  GitHub Repos   │               │
+│  │  - Metrics      │         │  - Source Code  │               │
+│  │  - Logs         │         │  - Commits      │               │
+│  │  - Traces       │         │  - PRs          │               │
+│  │  - Infrastructure│        │  - Issues       │               │
+│  └────────┬────────┘         └────────┬────────┘               │
+│           │                           │                         │
+└───────────┼───────────────────────────┼─────────────────────────┘
+            │                           │
+            │ MCP Protocol              │ MCP Protocol
+            │                           │
+┌───────────▼───────────────────────────▼─────────────────────────┐
+│                    MCP Integration Layer                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────────┐         ┌──────────────────┐             │
+│  │ New Relic MCP    │         │ GitHub MCP       │             │
+│  │ Client           │         │ Client           │             │
+│  │ - NerdGraph API  │         │ - REST API       │             │
+│  │ - Data Transform │         │ - GraphQL API    │             │
+│  └────────┬─────────┘         └────────┬─────────┘             │
+│           │                            │                        │
+└───────────┼────────────────────────────┼────────────────────────┘
+            │                            │
+            │                            │
+┌───────────▼────────────────────────────▼────────────────────────┐
+│                    Data Aggregation Layer                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │  Metrics    │  │   Logs      │  │   Code      │            │
+│  │  Collector  │  │  Collector  │  │  Collector  │            │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘            │
+│         │                │                │                     │
+│         └────────────────┼────────────────┘                     │
+│                          │                                      │
+│                   ┌──────▼──────┐                               │
+│                   │    Data     │                               │
+│                   │  Normalizer │                               │
+│                   └──────┬──────┘                               │
+│                          │                                      │
+└──────────────────────────┼──────────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────────┐
+│                      AI Analysis Engine                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │              Context Builder                              │  │
+│  │  - Correlate metrics with code changes                    │  │
+│  │  - Build temporal context                                 │  │
+│  │  - Link errors with stack traces to source code           │  │
+│  └─────────────────────────┬────────────────────────────────┘  │
+│                            │                                    │
+│  ┌─────────────────────────▼────────────────────────────────┐  │
+│  │           AI Orchestrator                                 │  │
+│  │  - Prompt Engineering                                     │  │
+│  │  - Multi-stage analysis                                   │  │
+│  │  - Result aggregation                                     │  │
+│  └─────────────────────────┬────────────────────────────────┘  │
+│                            │                                    │
+│  ┌─────────────────────────▼────────────────────────────────┐  │
+│  │         OpenAI / GitHub Copilot API                       │  │
+│  │  Model: GPT-4 / GPT-4o                                    │  │
+│  └─────────────────────────┬────────────────────────────────┘  │
+│                            │                                    │
+└────────────────────────────┼────────────────────────────────────┘
+                             │
+┌────────────────────────────▼────────────────────────────────────┐
+│                   Analysis Processing Layer                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ Performance  │  │    Error     │  │     Cost     │          │
+│  │  Analyzer    │  │   Analyzer   │  │  Optimizer   │          │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
+│         │                 │                 │                   │
+│  ┌──────▼─────────────────▼─────────────────▼───────┐          │
+│  │         Health Scoring Engine                     │          │
+│  │  - Calculate health score (0-10)                  │          │
+│  │  - Severity classification                        │          │
+│  │  - Priority ranking                               │          │
+│  └──────────────────────┬────────────────────────────┘          │
+│                         │                                        │
+└─────────────────────────┼────────────────────────────────────────┘
+                          │
+┌─────────────────────────▼────────────────────────────────────────┐
+│                 Recommendation Generator                          │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │  Issue Identification                                       │  │
+│  │  - Root cause determination                                 │  │
+│  │  - Impact assessment                                        │  │
+│  │  - Related issues correlation                               │  │
+│  └───────────────────────┬────────────────────────────────────┘  │
+│                          │                                        │
+│  ┌───────────────────────▼────────────────────────────────────┐  │
+│  │  Solution Generation                                        │  │
+│  │  - Code fix suggestions (with diffs)                        │  │
+│  │  - Configuration changes                                    │  │
+│  │  - Infrastructure adjustments                               │  │
+│  │  - Best practice recommendations                            │  │
+│  └───────────────────────┬────────────────────────────────────┘  │
+│                          │                                        │
+└──────────────────────────┼────────────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────────┐
+│                      Output Layer                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │   Reports    │  │    Alerts    │  │  Dashboard   │          │
+│  │  Generator   │  │   Manager    │  │   (Future)   │          │
+│  └──────┬───────┘  └──────┬───────┘  └──────────────┘          │
+│         │                 │                                      │
+│  ┌──────▼─────────────────▼───────┐                             │
+│  │     Notification Service       │                             │
+│  │  - Slack                        │                             │
+│  │  - Email                        │                             │
+│  │  - PagerDuty                    │                             │
+│  │  - Webhook                      │                             │
+│  └────────────────────────────────┘                             │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+### 2.2 Component Layers
+
+| Layer | Purpose | Key Components |
+|-------|---------|----------------|
+| **Data Source** | External systems providing data | New Relic, GitHub |
+| **MCP Integration** | Protocol-level communication | MCP Clients, API adapters |
+| **Data Aggregation** | Collect & normalize data | Collectors, Normalizers |
+| **AI Engine** | Intelligent analysis | OpenAI API, Prompt orchestrator |
+| **Analysis Processing** | Domain-specific analysis | Performance, Error, Cost analyzers |
+| **Recommendation** | Generate actionable insights | Issue identifier, Solution generator |
+| **Output** | Deliver results to users | Reports, Alerts, Dashboard |
+
+---
+
+## 3. Component Design
+
+### 3.1 MCP Integration Layer
+
+#### 3.1.1 New Relic MCP Client
+
+**Purpose:** Fetch monitoring data từ New Relic  
+**Protocol:** Model Context Protocol (MCP)  
+**API:** NerdGraph (GraphQL)
+
+**Capabilities:**
+```python
+class NewRelicMCPClient:
+    """
+    New Relic MCP Client for fetching observability data
+    """
+    
+    # Core methods
+    def get_apm_metrics(app_id: str, time_range: TimeRange) -> APMMetrics
+    def get_error_traces(app_id: str, time_range: TimeRange) -> List[ErrorTrace]
+    def get_transaction_traces(app_id: str) -> List[TransactionTrace]
+    def get_infrastructure_metrics(host_id: str) -> InfraMetrics
+    def get_logs(query: str, time_range: TimeRange) -> List[LogEntry]
+    def execute_nrql(query: str) -> QueryResult
+    
+    # Analysis helpers
+    def get_golden_signals(app_id: str) -> GoldenSignals
+    def get_apdex_score(app_id: str) -> float
+    def get_error_rate(app_id: str) -> float
+    def get_throughput(app_id: str) -> float
+```
+
+**Data Models:**
+```python
+@dataclass
+class APMMetrics:
+    app_id: str
+    timestamp: datetime
+    response_time: ResponseTimeMetrics  # avg, p50, p95, p99
+    throughput: float  # requests per minute
+    error_rate: float  # percentage
+    apdex_score: float  # 0-1
+    memory_usage: float  # MB
+    cpu_usage: float  # percentage
+    
+@dataclass
+class ErrorTrace:
+    error_id: str
+    timestamp: datetime
+    error_class: str
+    error_message: str
+    stack_trace: List[StackFrame]
+    transaction_name: str
+    user_id: Optional[str]
+    custom_attributes: Dict[str, Any]
+    
+@dataclass
+class TransactionTrace:
+    trace_id: str
+    duration_ms: float
+    timestamp: datetime
+    transaction_name: str
+    segments: List[TraceSegment]
+    database_queries: List[DatabaseQuery]
+    external_calls: List[ExternalCall]
+```
+
+#### 3.1.2 GitHub MCP Client
+
+**Purpose:** Fetch source code và repository context  
+**Protocol:** Model Context Protocol (MCP)  
+**API:** GitHub REST API + GraphQL API
+
+**Capabilities:**
+```python
+class GitHubMCPClient:
+    """
+    GitHub MCP Client for fetching code and repository context
+    """
+    
+    # Code retrieval
+    def get_file_content(repo: str, path: str, ref: str = "main") -> FileContent
+    def get_directory_structure(repo: str, path: str = "/") -> DirectoryTree
+    def search_code(repo: str, query: str) -> List[CodeSearchResult]
+    
+    # Context gathering
+    def get_recent_commits(repo: str, since: datetime) -> List[Commit]
+    def get_pull_requests(repo: str, state: str = "all") -> List[PullRequest]
+    def get_file_blame(repo: str, path: str) -> FileBlame
+    
+    # Code analysis helpers
+    def get_dependencies(repo: str) -> Dependencies
+    def get_changed_files(repo: str, since: datetime) -> List[str]
+    def get_commit_for_line(repo: str, path: str, line: int) -> Commit
+```
+
+**Data Models:**
+```python
+@dataclass
+class FileContent:
+    path: str
+    content: str
+    size: int
+    sha: str
+    language: str
+    last_modified: datetime
+    
+@dataclass
+class Commit:
+    sha: str
+    message: str
+    author: str
+    timestamp: datetime
+    files_changed: List[str]
+    additions: int
+    deletions: int
+    
+@dataclass
+class CodeSearchResult:
+    file_path: str
+    line_number: int
+    code_snippet: str
+    relevance_score: float
+```
+
+---
+
+### 3.2 Data Aggregation Layer
+
+#### 3.2.1 Data Collector
+
+**Purpose:** Orchestrate data collection từ multiple sources
+
+```python
+class DataCollector:
+    """
+    Aggregates data from all sources for analysis
+    """
+    
+    def collect_application_data(app_config: AppConfig) -> ApplicationData:
+        """
+        Collect comprehensive data for an application
+        
+        Returns:
+            ApplicationData containing:
+            - Metrics (New Relic)
+            - Logs (New Relic)
+            - Traces (New Relic)
+            - Source code (GitHub)
+            - Recent changes (GitHub)
+        """
+        pass
+    
+    def collect_time_series(app_id: str, metric: str, duration: timedelta) -> TimeSeries:
+        """Get historical data for trend analysis"""
+        pass
+```
+
+#### 3.2.2 Data Normalizer
+
+**Purpose:** Transform data into unified format for AI processing
+
+```python
+class DataNormalizer:
+    """
+    Normalizes data from different sources into AI-friendly format
+    """
+    
+    def normalize_metrics(raw_metrics: Any) -> NormalizedMetrics
+    def normalize_logs(raw_logs: List[Any]) -> NormalizedLogs
+    def normalize_traces(raw_traces: List[Any]) -> NormalizedTraces
+    def build_context_document(data: ApplicationData) -> ContextDocument
+```
+
+**ContextDocument Format:**
+```python
+@dataclass
+class ContextDocument:
+    """
+    Unified document cho AI analysis
+    """
+    # Temporal context
+    timestamp: datetime
+    time_range: TimeRange
+    
+    # Application info
+    app_name: str
+    app_id: str
+    environment: str  # production, staging, etc.
+    
+    # Metrics summary
+    current_health_score: Optional[float]
+    metrics_summary: MetricsSummary
+    
+    # Issues detected
+    anomalies: List[Anomaly]
+    errors: List[ErrorSummary]
+    performance_issues: List[PerformanceIssue]
+    
+    # Code context
+    relevant_files: List[FileContext]
+    recent_changes: List[Commit]
+    
+    # Historical context
+    trends: Dict[str, Trend]
+    similar_incidents: List[HistoricalIncident]
+```
+
+---
+
+### 3.3 AI Analysis Engine
+
+#### 3.3.1 Context Builder
+
+**Purpose:** Build rich context cho AI analysis
+
+```python
+class ContextBuilder:
+    """
+    Builds comprehensive context for AI analysis
+    """
+    
+    def build_performance_context(metrics: APMMetrics, traces: List[TransactionTrace]) -> PerformanceContext
+    def build_error_context(errors: List[ErrorTrace], code: CodeContext) -> ErrorContext
+    def correlate_metrics_with_code(metrics: APMMetrics, changes: List[Commit]) -> Correlation
+    def link_stack_trace_to_code(stack_trace: List[StackFrame], repo: str) -> CodeMapping
+```
+
+#### 3.3.2 AI Orchestrator
+
+**Purpose:** Manage AI analysis workflow
+
+```python
+class AIOrchestrator:
+    """
+    Orchestrates multi-stage AI analysis
+    """
+    
+    def analyze_application_health(context: ContextDocument) -> AnalysisResult:
+        """
+        Multi-stage analysis:
+        1. Quick scan for critical issues
+        2. Deep dive into detected problems
+        3. Generate recommendations
+        4. Validate suggestions
+        """
+        pass
+    
+    def perform_root_cause_analysis(issue: Issue, context: ContextDocument) -> RootCauseAnalysis
+    def generate_fix_suggestions(issue: Issue, code_context: CodeContext) -> List[FixSuggestion]
+    def validate_recommendation(recommendation: Recommendation) -> ValidationResult
+```
+
+#### 3.3.3 Prompt Templates
+
+**Purpose:** Structured prompts cho different analysis types
+
+```python
+PROMPTS = {
+    "health_check": """
+    Analyze the following application health data and provide:
+    1. Overall health score (0-10)
+    2. Critical issues requiring immediate attention
+    3. Warnings and potential problems
+    4. Positive observations
+    
+    Data:
+    {context}
+    
+    Format response as JSON.
+    """,
+    
+    "performance_analysis": """
+    Analyze this performance degradation:
+    
+    Metrics:
+    - Response time: {response_time} (baseline: {baseline})
+    - Throughput: {throughput} req/min
+    - Error rate: {error_rate}%
+    
+    Recent changes:
+    {commits}
+    
+    Slow transactions:
+    {traces}
+    
+    Identify:
+    1. Root cause of performance degradation
+    2. Which code change likely caused this
+    3. Specific code fixes needed (with line numbers)
+    4. Additional recommendations
+    """,
+    
+    "error_analysis": """
+    Analyze this error pattern:
+    
+    Error: {error_class}: {error_message}
+    Occurrences: {count} times in {timeframe}
+    
+    Stack trace:
+    {stack_trace}
+    
+    Related code:
+    {code_snippet}
+    
+    Provide:
+    1. Root cause explanation
+    2. Why this error is happening
+    3. Exact code fix with diff format
+    4. Prevention strategies
+    """,
+    
+    "code_review_with_metrics": """
+    Review this code change in context of production metrics:
+    
+    Commit: {commit_sha}
+    {commit_message}
+    
+    Changed files:
+    {diff}
+    
+    Impact on metrics (after deployment):
+    - Response time: {before} → {after}
+    - Error rate: {error_before} → {error_after}
+    
+    Analysis:
+    1. Did this change cause performance regression?
+    2. If yes, which part of the code is problematic?
+    3. Suggested improvements
+    """
+}
+```
+
+---
+
+### 3.4 Analysis Processing Layer
+
+#### 3.4.1 Performance Analyzer
+
+```python
+class PerformanceAnalyzer:
+    """
+    Specialized analyzer for performance issues
+    """
+    
+    def detect_performance_regression(current: Metrics, baseline: Metrics) -> Optional[PerformanceRegression]
+    def identify_slow_queries(traces: List[TransactionTrace]) -> List[SlowQuery]
+    def analyze_n_plus_one(traces: List[TransactionTrace]) -> List[NPlusOneProblem]
+    def detect_memory_leaks(metrics: TimeSeries) -> Optional[MemoryLeak]
+    def analyze_cpu_spikes(metrics: TimeSeries) -> List[CPUSpike]
+```
+
+#### 3.4.2 Error Analyzer
+
+```python
+class ErrorAnalyzer:
+    """
+    Specialized analyzer for errors and exceptions
+    """
+    
+    def classify_errors(errors: List[ErrorTrace]) -> ErrorClassification
+    def find_error_patterns(errors: List[ErrorTrace]) -> List[ErrorPattern]
+    def correlate_errors_with_deployments(errors: List[ErrorTrace], deployments: List[Deployment]) -> Correlation
+    def prioritize_errors(errors: List[ErrorTrace]) -> List[PrioritizedError]
+```
+
+#### 3.4.3 Cost Optimizer
+
+```python
+class CostOptimizer:
+    """
+    Identifies cost optimization opportunities
+    """
+    
+    def analyze_resource_utilization(infra_metrics: InfraMetrics) -> ResourceAnalysis
+    def identify_oversized_instances(metrics: TimeSeries) -> List[Recommendation]
+    def suggest_caching_opportunities(traces: List[TransactionTrace]) -> List[CachingOpportunity]
+    def optimize_database_queries(queries: List[DatabaseQuery]) -> List[QueryOptimization]
+```
+
+#### 3.4.4 Health Scoring Engine
+
+```python
+class HealthScoringEngine:
+    """
+    Calculates overall application health score
+    """
+    
+    def calculate_health_score(context: ContextDocument) -> HealthScore:
+        """
+        Score components:
+        - Performance: 30%
+        - Reliability (error rate): 30%
+        - Resource efficiency: 20%
+        - User satisfaction (Apdex): 20%
+        """
+        pass
+    
+    def classify_severity(issue: Issue) -> Severity  # CRITICAL, HIGH, MEDIUM, LOW
+    def rank_issues_by_priority(issues: List[Issue]) -> List[Issue]
+```
+
+---
+
+### 3.5 Recommendation Generator
+
+#### 3.5.1 Issue Identifier
+
+```python
+class IssueIdentifier:
+    """
+    Identifies and categorizes issues
+    """
+    
+    def identify_root_cause(issue: Issue, context: ContextDocument) -> RootCause
+    def assess_impact(issue: Issue) -> ImpactAssessment
+    def find_related_issues(issue: Issue, all_issues: List[Issue]) -> List[Issue]
+    def determine_urgency(issue: Issue) -> Urgency
+```
+
+**RootCause Model:**
+```python
+@dataclass
+class RootCause:
+    category: str  # "code", "configuration", "infrastructure", "external"
+    description: str
+    evidence: List[Evidence]
+    confidence: float  # 0-1
+    related_components: List[str]
+    
+@dataclass
+class Evidence:
+    type: str  # "metric", "log", "trace", "code"
+    description: str
+    data: Any
+    timestamp: Optional[datetime]
+```
+
+#### 3.5.2 Solution Generator
+
+```python
+class SolutionGenerator:
+    """
+    Generates actionable solutions
+    """
+    
+    def generate_code_fix(issue: Issue, code_context: CodeContext) -> CodeFix
+    def suggest_configuration_change(issue: Issue) -> ConfigurationChange
+    def recommend_infrastructure_adjustment(issue: Issue) -> InfrastructureChange
+    def provide_best_practices(issue: Issue) -> List[BestPractice]
+```
+
+**Solution Models:**
+```python
+@dataclass
+class CodeFix:
+    file_path: str
+    description: str
+    diff: str  # Unified diff format
+    before_code: str
+    after_code: str
+    line_numbers: Tuple[int, int]
+    explanation: str
+    confidence: float
+    
+@dataclass
+class ConfigurationChange:
+    config_file: str
+    parameter: str
+    current_value: Any
+    recommended_value: Any
+    reason: str
+    expected_impact: str
+    
+@dataclass
+class InfrastructureChange:
+    component: str  # "database", "cache", "load_balancer", etc.
+    change_type: str  # "scale_up", "scale_down", "add_resource", etc.
+    details: str
+    estimated_cost_impact: float
+    expected_performance_improvement: str
+```
+
+---
+
+## 4. Data Flow
+
+### 4.1 Analysis Workflow
+
+```
+1. TRIGGER
+   ├─ Scheduled (cron)
+   ├─ On-demand (CLI/API)
+   ├─ Event-driven (New Relic alert)
+   └─ Continuous (daemon mode)
+
+2. DATA COLLECTION
+   ├─ New Relic MCP Client
+   │  ├─ Fetch metrics (last 24h)
+   │  ├─ Fetch errors (last 24h)
+   │  ├─ Fetch traces (sample)
+   │  └─ Fetch infrastructure metrics
+   │
+   └─ GitHub MCP Client
+      ├─ Fetch recent commits (last 7 days)
+      ├─ Get current codebase snapshot
+      └─ Fetch relevant files based on errors
+
+3. DATA NORMALIZATION
+   ├─ Convert to unified format
+   ├─ Build temporal context
+   └─ Create ContextDocument
+
+4. AI ANALYSIS (Multi-stage)
+   
+   Stage 1: Quick Health Check
+   ├─ Calculate health score
+   ├─ Identify critical issues
+   └─ Determine if deep dive needed
+   
+   Stage 2: Issue Analysis (for each issue)
+   ├─ Root cause analysis
+   ├─ Impact assessment
+   └─ Priority ranking
+   
+   Stage 3: Solution Generation
+   ├─ Code fixes
+   ├─ Configuration changes
+   └─ Best practices
+   
+   Stage 4: Validation
+   ├─ Verify recommendations feasibility
+   └─ Check for conflicts
+
+5. REPORT GENERATION
+   ├─ Format results
+   ├─ Add visualizations
+   └─ Include actionable steps
+
+6. NOTIFICATION
+   ├─ Alert if critical
+   ├─ Send report
+   └─ Update dashboard
+
+7. STORAGE (for learning)
+   ├─ Store analysis results
+   ├─ Track recommendation outcomes
+   └─ Build historical database
+```
+
+### 4.2 Data Collection Sequence Diagram
+
+```
+User/Scheduler        DataCollector    NR_MCP_Client    GH_MCP_Client    AI_Engine
+     |                      |                 |                |              |
+     |--analyze_app-------->|                 |                |              |
+     |                      |                 |                |              |
+     |                      |--get_metrics--->|                |              |
+     |                      |<--metrics-------|                |              |
+     |                      |                 |                |              |
+     |                      |--get_errors---->|                |              |
+     |                      |<--errors--------|                |              |
+     |                      |                 |                |              |
+     |                      |--get_traces---->|                |              |
+     |                      |<--traces--------|                |              |
+     |                      |                 |                |              |
+     |                      |--get_recent_commits------------->|              |
+     |                      |<--commits-----------------------|              |
+     |                      |                 |                |              |
+     |                      |--get_code_for_errors------------>|              |
+     |                      |<--code---------------------------|              |
+     |                      |                 |                |              |
+     |                      |--normalize_data()                               |
+     |                      |                 |                |              |
+     |                      |--analyze_context---------------------------->|
+     |                      |                 |                |              |
+     |                      |                 |                |  [AI Processing]
+     |                      |                 |                |              |
+     |                      |<--analysis_result---------------------------|
+     |                      |                 |                |              |
+     |<--report-------------|                 |                |              |
+     |                      |                 |                |              |
+```
+
+---
+
+## 5. MCP Integrations
+
+### 5.1 Model Context Protocol (MCP) Overview
+
+MCP là protocol chuẩn để AI models có thể interact với external data sources một cách an toàn và có cấu trúc.
+
+**Key Concepts:**
+- **Resources**: Named data entities (files, API endpoints)
+- **Tools**: Functions AI có thể call
+- **Prompts**: Reusable prompt templates
+- **Sampling**: Request AI model completions
+
+### 5.2 New Relic MCP Integration
+
+**MCP Server Configuration:**
+```python
+# New Relic MCP Server exposes these tools
+
+TOOLS = [
+    {
+        "name": "get_apm_metrics",
+        "description": "Fetch APM metrics for an application",
+        "parameters": {
+            "app_id": "string",
+            "metric_names": "array<string>",
+            "time_range": "object"
+        }
+    },
+    {
+        "name": "query_nrql",
+        "description": "Execute NRQL query",
+        "parameters": {
+            "query": "string",
+            "account_id": "string"
+        }
+    },
+    {
+        "name": "get_error_traces",
+        "description": "Get error traces with stack traces",
+        "parameters": {
+            "app_id": "string",
+            "error_class": "optional<string>",
+            "limit": "optional<int>"
+        }
+    }
+]
+
+RESOURCES = [
+    {
+        "uri": "newrelic://app/{app_id}/metrics",
+        "name": "Application Metrics",
+        "description": "Real-time metrics for application"
+    },
+    {
+        "uri": "newrelic://app/{app_id}/errors",
+        "name": "Application Errors",
+        "description": "Error traces and exceptions"
+    }
+]
+```
+
+**Usage Example:**
+```python
+# AI model can call these tools through MCP
+result = mcp_client.call_tool(
+    "get_apm_metrics",
+    {
+        "app_id": "12345",
+        "metric_names": ["HttpDispatcher", "Apdex", "Errors/all"],
+        "time_range": {"since": "1 hour ago"}
+    }
+)
+```
+
+### 5.3 GitHub MCP Integration
+
+**MCP Server Configuration:**
+```python
+TOOLS = [
+    {
+        "name": "get_file",
+        "description": "Get file content from repository",
+        "parameters": {
+            "repo": "string",  # "owner/repo"
+            "path": "string",
+            "ref": "optional<string>"
+        }
+    },
+    {
+        "name": "search_code",
+        "description": "Search code in repository",
+        "parameters": {
+            "repo": "string",
+            "query": "string"
+        }
+    },
+    {
+        "name": "get_commits",
+        "description": "Get recent commits",
+        "parameters": {
+            "repo": "string",
+            "since": "optional<datetime>",
+            "path": "optional<string>"
+        }
+    },
+    {
+        "name": "get_file_blame",
+        "description": "Get git blame for file",
+        "parameters": {
+            "repo": "string",
+            "path": "string"
+        }
+    }
+]
+```
+
+---
+
+## 6. AI Analysis Pipeline
+
+### 6.1 Analysis Stages
+
+#### Stage 1: Health Check (Quick Scan)
+
+**Input:** ContextDocument  
+**Output:** HealthCheckResult  
+**Duration:** ~30 seconds  
+**LLM Calls:** 1-2
+
+```python
+@dataclass
+class HealthCheckResult:
+    health_score: float  # 0-10
+    status: str  # "healthy", "warning", "critical"
+    critical_issues: List[Issue]
+    warnings: List[Issue]
+    positive_observations: List[str]
+    requires_deep_dive: bool
+```
+
+**AI Prompt Strategy:**
+```
+Quick health assessment of application with focus on:
+1. Response time vs baseline
+2. Error rate trends
+3. Resource utilization
+4. Recent code changes impact
+
+Identify CRITICAL issues only. Assign health score.
+```
+
+#### Stage 2: Deep Dive Analysis
+
+**Triggered when:** Health score < 8.0 OR critical issues found  
+**Input:** Specific issues + full context  
+**Output:** DetailedAnalysis  
+**Duration:** ~2-5 minutes per issue  
+**LLM Calls:** 1-3 per issue
+
+**Sub-stages:**
+```
+2.1 Root Cause Analysis
+    - Correlate metrics with code changes
+    - Analyze stack traces
+    - Review database queries
+    - Check external dependencies
+
+2.2 Impact Assessment
+    - Users affected
+    - Business impact
+    - Performance degradation %
+    - Estimated cost impact
+
+2.3 Historical Context
+    - Similar past incidents
+    - Previous solutions
+    - Recurring patterns
+```
+
+#### Stage 3: Solution Generation
+
+**Input:** Analyzed issues + code context  
+**Output:** Recommendations with code fixes  
+**Duration:** ~1-3 minutes per issue  
+**LLM Calls:** 1-2 per issue
+
+**AI Task:**
+```
+Generate specific, actionable solutions:
+1. Exact code changes needed (with diffs)
+2. Configuration adjustments
+3. Infrastructure recommendations
+4. Preventive measures
+
+Each recommendation must include:
+- What to change
+- Why it will help
+- Expected impact
+- Implementation steps
+```
+
+#### Stage 4: Validation
+
+**Input:** Generated recommendations  
+**Output:** Validated recommendations  
+**Duration:** ~30 seconds  
+**LLM Calls:** 1
+
+**Validation checks:**
+```
+- Code fixes syntax validity
+- No conflicting recommendations
+- Feasibility check
+- Risk assessment
+```
+
+### 6.2 Prompt Engineering Strategy
+
+#### Context Window Management
+
+**Maximum context size:** 128K tokens (GPT-4)  
+**Strategy:** Selective inclusion based on relevance
+
+```python
+def build_ai_context(full_context: ContextDocument, issue: Issue) -> str:
+    """
+    Build focused context for AI analysis
+    Priority:
+    1. Issue-specific metrics (recent)
+    2. Related code files only
+    3. Relevant logs (filtered)
+    4. Recent commits affecting related files
+    5. Historical context (summary only)
+    """
+    
+    context_parts = []
+    
+    # 1. Issue description (always include)
+    context_parts.append(format_issue(issue))
+    
+    # 2. Relevant metrics (last 24h)
+    metrics = filter_relevant_metrics(full_context.metrics, issue)
+    context_parts.append(format_metrics(metrics))
+    
+    # 3. Code context (only affected files)
+    if issue.type == "error":
+        files = extract_files_from_stacktrace(issue.stack_trace)
+    elif issue.type == "performance":
+        files = identify_slow_functions(issue.traces)
+    
+    code_context = fetch_code_files(files)
+    context_parts.append(format_code(code_context))
+    
+    # 4. Recent changes (last 7 days, relevant files only)
+    commits = filter_commits_by_files(full_context.commits, files)
+    context_parts.append(format_commits(commits))
+    
+    # 5. Historical incidents (summary)
+    similar = find_similar_incidents(issue, limit=3)
+    context_parts.append(format_incidents_summary(similar))
+    
+    return "\n\n".join(context_parts)
+```
+
+#### Few-Shot Learning
+
+Include examples of good analysis in prompts:
+
+```python
+EXAMPLE_ANALYSIS = """
+Example of good root cause analysis:
+
+Issue: Response time increased from 200ms to 1500ms
+Metrics: 
+- Throughput: Normal (500 rpm)
+- Error rate: Normal (0.1%)
+- Database time: Increased from 50ms to 1200ms
+
+Code changes (last 24h):
+- Commit abc123: "Add eager loading for user orders"
+  File: app/controllers/users_controller.rb
+  Line 45: User.includes(:orders, :profile)
+
+Root Cause:
+The eager loading change in commit abc123 intended to fix N+1 queries, 
+but inadvertently loads ALL orders for users, including archived orders.
+For users with 1000+ orders, this creates a massive query.
+
+Evidence:
+- Database query time spike correlates exactly with deployment time
+- Slow query log shows: SELECT * FROM orders WHERE user_id IN (...)
+- No WHERE clause filtering archived orders
+
+Fix needed:
+Add condition to exclude archived orders:
+User.includes(:orders).where(orders: {archived: false})
+
+This should reduce query time back to ~50ms.
+"""
+```
+
+### 6.3 AI Model Configuration
+
+**Primary Model:** GPT-4-turbo / GPT-4o  
+**Backup Model:** GPT-3.5-turbo (for non-critical analysis)
+
+```python
+AI_CONFIG = {
+    "health_check": {
+        "model": "gpt-4-turbo-preview",
+        "temperature": 0.3,  # Lower for consistency
+        "max_tokens": 1000,
+        "response_format": {"type": "json_object"}
+    },
+    "root_cause_analysis": {
+        "model": "gpt-4o",
+        "temperature": 0.4,
+        "max_tokens": 2000,
+    },
+    "code_fix_generation": {
+        "model": "gpt-4o",
+        "temperature": 0.2,  # Very low for code generation
+        "max_tokens": 1500,
+    }
+}
+```
+
+---
+
+## 7. API Specifications
+
+### 7.1 REST API Endpoints
+
+```yaml
+# Base URL: http://localhost:8000/api/v1
+
+POST /analyze
+  Description: Trigger analysis for an application
+  Body:
+    app_id: string
+    time_range: optional<string>  # "1h", "24h", "7d"
+    deep_dive: optional<bool>     # Force deep analysis
+  Response:
+    analysis_id: string
+    status: string
+    estimated_time: int  # seconds
+
+GET /analyze/{analysis_id}
+  Description: Get analysis results
+  Response:
+    analysis_id: string
+    status: string  # "pending", "running", "completed", "failed"
+    result: optional<AnalysisResult>
+    progress: float  # 0-100
+
+GET /health/{app_id}
+  Description: Get current health score
+  Response:
+    app_id: string
+    health_score: float
+    status: string
+    last_updated: datetime
+    issues_count: int
+
+GET /recommendations/{app_id}
+  Description: Get latest recommendations
+  Response:
+    app_id: string
+    recommendations: List[Recommendation]
+    generated_at: datetime
+
+POST /analyze/custom
+  Description: Custom analysis with specific context
+  Body:
+    context: ContextDocument
+    analysis_type: string  # "performance", "error", "cost"
+  Response:
+    result: AnalysisResult
+```
+
+### 7.2 CLI Interface
+
+```bash
+# Analyze application
+ai-monitor analyze --app-id APP_ID [--deep-dive] [--output report.json]
+
+# Continuous monitoring
+ai-monitor monitor --app-id APP_ID --interval 60m
+
+# Get health status
+ai-monitor health --app-id APP_ID
+
+# Run specific analysis type
+ai-monitor analyze:performance --app-id APP_ID
+ai-monitor analyze:errors --app-id APP_ID
+ai-monitor analyze:cost --app-id APP_ID
+
+# Generate report
+ai-monitor report --app-id APP_ID --format markdown --output report.md
+
+# Configuration
+ai-monitor config --set new_relic.api_key=XXX
+ai-monitor config --show
+```
+
+---
+
+## 8. Use Cases
+
+### 8.1 Use Case 1: Proactive Performance Monitoring
+
+**Scenario:**  
+E-commerce app response time increased 30% sau deployment mới
+
+**Flow:**
+```
+1. Scheduled job runs every hour
+2. Detects response time increase
+3. Triggers deep dive analysis
+4. AI correlates metrics với recent deployment
+5. Identifies problematic commit
+6. Reviews changed code
+7. Finds N+1 query problem
+8. Generates code fix với diff
+9. Alerts team via Slack
+10. Creates GitHub issue with fix suggestion
+```
+
+**Expected Output:**
+```markdown
+# Performance Alert: Response Time Increased 30%
+
+## Summary
+Response time increased from 250ms to 325ms after deployment at 14:30.
+
+## Root Cause
+Commit `abc123` introduced N+1 query in ProductController.show
+
+## Evidence
+- Deployment correlation: 100% match
+- Database query count increased from 3 to 45 per request
+- Affected endpoint: GET /products/:id
+
+## Recommended Fix
+
+File: app/controllers/products_controller.rb
+Line: 28
+
+```diff
+- @product = Product.find(params[:id])
++ @product = Product.includes(:reviews, :images).find(params[:id])
+```
+
+## Expected Impact
+- Response time: 325ms → 240ms
+- Database queries: 45 → 3 per request
+- Load reduction: ~70%
+
+## Action Items
+1. Apply the code fix above
+2. Deploy to staging for verification
+3. Monitor for 30 minutes before production deployment
+```
+
+### 8.2 Use Case 2: Error Pattern Analysis
+
+**Scenario:**  
+Sudden spike in NullPointerException errors
+
+**Flow:**
+```
+1. New Relic alerts on error rate > 5%
+2. System triggers analysis
+3. AI fetches error traces
+4. Groups similar errors
+5. Identifies pattern: All errors in UserService
+6. Fetches UserService code from GitHub
+7. Analyzes stack traces → finds unhandled null case
+8. Checks recent changes → finds recent refactoring
+9. Generates fix with null check
+10. Recommends adding test coverage
+```
+
+### 8.3 Use Case 3: Cost Optimization
+
+**Scenario:**  
+Monthly AWS bill increased 40% without traffic increase
+
+**Flow:**
+```
+1. Weekly cost analysis runs
+2. AI detects infrastructure cost spike
+3. Analyzes resource utilization
+4. Finds database instance at 15% CPU usage
+5. Reviews query patterns
+6. Identifies inefficient queries causing over-provisioning
+7. Suggests query optimizations
+8. Recommends downsizing instance
+9. Estimates savings: $800/month
+```
+
+### 8.4 Use Case 4: Deployment Impact Analysis
+
+**Scenario:**  
+Want to verify deployment didn't introduce regressions
+
+**Flow:**
+```
+1. Deployment completed at 15:00
+2. System automatically monitors for 1 hour post-deployment
+3. Compares metrics before/after
+4. AI analyzes:
+   - Response time: ✅ Improved 5%
+   - Error rate: ✅ No change
+   - Throughput: ✅ Normal
+   - New errors: ⚠️ 2 new exceptions detected
+5. Deep dives into new errors
+6. Determines severity: LOW (edge case)
+7. Creates ticket for follow-up
+8. Overall verdict: ✅ Deployment successful
+```
+
+---
+
+## 9. Technology Stack
+
+### 9.1 Core Technologies
+
+| Component | Technology | Version | Rationale |
+|-----------|-----------|---------|-----------|
+| **Language** | Python | 3.11+ | Rich ecosystem, AI/ML libraries |
+| **MCP Framework** | `mcp` | latest | Official MCP Python SDK |
+| **AI/LLM** | OpenAI API | GPT-4o | Best reasoning capabilities |
+| **HTTP Client** | `httpx` | latest | Async support, modern |
+| **Data Processing** | `pandas` | latest | Time series analysis |
+| **Config** | `pydantic` | 2.x | Type-safe configuration |
+| **CLI** | `click` + `rich` | latest | Beautiful CLI experience |
+| **Async** | `asyncio` | stdlib | Concurrent API calls |
+| **Logging** | `structlog` | latest | Structured logging |
+| **Testing** | `pytest` | latest | Industry standard |
+
+### 9.2 Dependencies
+
+```toml
+[tool.poetry.dependencies]
+python = "^3.11"
+
+# MCP
+mcp = "^0.9.0"
+
+# AI
+openai = "^1.12.0"
+
+# HTTP & API
+httpx = "^0.27.0"
+requests = "^2.31.0"
+
+# Data processing
+pandas = "^2.2.0"
+numpy = "^1.26.0"
+
+# Configuration
+pydantic = "^2.6.0"
+pydantic-settings = "^2.1.0"
+python-dotenv = "^1.0.0"
+pyyaml = "^6.0.1"
+
+# CLI
+click = "^8.1.7"
+rich = "^13.7.0"
+
+# Logging
+structlog = "^24.1.0"
+colorlog = "^6.8.0"
+
+# Notifications
+slack-sdk = "^3.27.0"
+
+# Utilities
+python-dateutil = "^2.8.2"
+pytz = "^2024.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pytest-asyncio = "^0.23.0"
+pytest-cov = "^4.1.0"
+black = "^24.1.0"
+ruff = "^0.2.0"
+mypy = "^1.8.0"
+```
+
+### 9.3 External Services
+
+| Service | Purpose | Pricing |
+|---------|---------|---------|
+| **New Relic** | Observability data source | $99+/month |
+| **OpenAI API** | AI analysis | ~$0.01-0.03/1K tokens |
+| **GitHub API** | Code repository access | Free for public repos |
+| **Slack** (optional) | Notifications | Free |
+
+---
+
+## 10. Security & Performance
+
+### 10.1 Security Considerations
+
+#### 10.1.1 Sensitive Data Handling
+
+```python
+# Never send to AI:
+SENSITIVE_PATTERNS = [
+    r'password\s*=\s*["\'].*["\']',
+    r'api_key\s*=\s*["\'].*["\']',
+    r'secret\s*=\s*["\'].*["\']',
+    r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b',  # Credit cards
+    r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',  # Emails
+]
+
+def sanitize_logs(logs: str) -> str:
+    """Remove sensitive data before sending to AI"""
+    for pattern in SENSITIVE_PATTERNS:
+        logs = re.sub(pattern, '[REDACTED]', logs)
+    return logs
+```
+
+#### 10.1.2 API Key Management
+
+```python
+# Store credentials securely
+- Use environment variables
+- Never commit to git
+- Rotate keys regularly
+- Use different keys for dev/prod
+```
+
+#### 10.1.3 Access Control
+
+```python
+# Role-based access
+ROLES = {
+    "admin": ["analyze", "configure", "view_all"],
+    "developer": ["analyze", "view_own_apps"],
+    "viewer": ["view_reports"]
+}
+```
+
+### 10.2 Performance Optimization
+
+#### 10.2.1 Caching Strategy
+
+```python
+# Cache expensive operations
+CACHE_TTL = {
+    "metrics": 300,  # 5 minutes
+    "code": 3600,    # 1 hour
+    "analysis": 1800 # 30 minutes
+}
+
+# Use Redis for distributed caching
+cache.set(f"metrics:{app_id}", metrics, ttl=300)
+```
+
+#### 10.2.2 Parallel Processing
+
+```python
+async def collect_data_parallel(app_id: str):
+    """Fetch all data sources concurrently"""
+    results = await asyncio.gather(
+        new_relic_client.get_metrics(app_id),
+        new_relic_client.get_errors(app_id),
+        new_relic_client.get_traces(app_id),
+        github_client.get_recent_commits(repo),
+        return_exceptions=True
+    )
+    return results
+```
+
+#### 10.2.3 Rate Limiting
+
+```python
+# Respect API rate limits
+RATE_LIMITS = {
+    "new_relic": 10,    # requests per second
+    "github": 5000,      # requests per hour
+    "openai": 60,        # requests per minute
+}
+
+# Use token bucket algorithm
+rate_limiter = AsyncLimiter(max_rate=10, time_period=1)
+```
+
+### 10.3 Error Handling
+
+```python
+# Retry strategy for transient failures
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    retry=retry_if_exception_type((ConnectionError, TimeoutError))
+)
+async def fetch_with_retry(url: str):
+    return await httpx.get(url)
+
+# Graceful degradation
+try:
+    code_context = await github_client.get_code(file_path)
+except GitHubAPIError:
+    code_context = None  # Continue without code context
+    logger.warning("Failed to fetch code context, continuing without it")
+```
+
+---
+
+## 11. Deployment Strategy
+
+### 11.1 Deployment Options
+
+#### Option 1: Standalone Python Script (Simplest)
+
+```bash
+# Run locally or on cron
+python main.py --analyze --app-id YOUR_APP_ID
+
+# Crontab for scheduled execution
+0 */1 * * * cd /app && python main.py --monitor
+```
+
+**Pros:** Simple, no infrastructure needed  
+**Cons:** No API, single-threaded
+
+#### Option 2: Docker Container
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+CMD ["python", "main.py", "--monitor"]
+```
+
+```bash
+docker build -t ai-monitor .
+docker run -d \
+  -e NEW_RELIC_API_KEY=xxx \
+  -e OPENAI_API_KEY=xxx \
+  ai-monitor
+```
+
+**Pros:** Portable, reproducible  
+**Cons:** Still limited scalability
+
+#### Option 3: Kubernetes Deployment
+
+```yaml
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-monitor
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: ai-monitor
+        image: ai-monitor:latest
+        env:
+        - name: NEW_RELIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-monitor-secrets
+              key: new-relic-api-key
+```
+
+**Pros:** Scalable, reliable  
+**Cons:** Complex setup
+
+### 11.2 Configuration Management
+
+```yaml
+# config/production.yaml
+environment: production
+
+new_relic:
+  api_key: ${NEW_RELIC_API_KEY}  # From env var
+  account_id: ${NEW_RELIC_ACCOUNT_ID}
+
+openai:
+  api_key: ${OPENAI_API_KEY}
+  model: gpt-4o
+  
+analysis:
+  interval_minutes: 60
+  alert_threshold: 7.5
+
+logging:
+  level: INFO
+  format: json  # For log aggregation
+```
+
+---
+
+## 12. Success Metrics
+
+### 12.1 System Performance Metrics
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| **Analysis latency** | < 3 minutes | P95 analysis completion time |
+| **AI accuracy** | > 85% | Manually validated recommendations |
+| **Alert precision** | > 90% | True positives / Total alerts |
+| **System uptime** | > 99.5% | Monthly availability |
+| **API response time** | < 500ms | P95 for GET endpoints |
+
+### 12.2 Business Impact Metrics
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| **MTTR reduction** | -50% | Mean time to resolution |
+| **Proactive detection** | > 70% | Issues found before user reports |
+| **Cost savings** | $500+/month | Infrastructure optimization impact |
+| **Developer time saved** | 10+ hrs/week | Time spent on manual monitoring |
+
+### 12.3 AI Quality Metrics
+
+```python
+@dataclass
+class RecommendationOutcome:
+    recommendation_id: str
+    issue_type: str
+    ai_suggestion: str
+    was_implemented: bool
+    was_effective: bool  # Did it fix the issue?
+    developer_feedback: str
+    confidence_score: float
+    
+# Track over time to improve prompts
+def calculate_ai_accuracy(outcomes: List[RecommendationOutcome]) -> float:
+    effective = [o for o in outcomes if o.was_implemented and o.was_effective]
+    implemented = [o for o in outcomes if o.was_implemented]
+    return len(effective) / len(implemented) if implemented else 0.0
+```
+
+---
+
+## 13. Future Enhancements
+
+### Phase 2 (Next 3 months)
+- 🔄 Auto-remediation workflows (auto-create PRs)
+- 📊 Web dashboard với real-time updates
+- 🔔 More notification channels (PagerDuty, Teams)
+- 📈 Historical trend analysis & predictions
+- 🎯 Custom alerting rules per app
+
+### Phase 3 (6 months)
+- 🤖 Multi-model support (Claude, Gemini)
+- 🔌 Plugin system cho custom analyzers
+- 📚 Knowledge base từ past incidents
+- 🧪 A/B testing cho recommendations
+- 💾 Long-term metrics storage
+
+### Phase 4 (12 months)
+- 🎨 Full-featured web UI
+- 👥 Multi-tenant support
+- 🔐 Advanced RBAC
+- 📊 Business metrics correlation
+- 🌍 Multi-region deployment
+
+---
+
+## 14. Appendix
+
+### 14.1 Sample Analysis Output
+
+```json
+{
+  "analysis_id": "anl_20260206_143000",
+  "timestamp": "2026-02-06T14:30:00Z",
+  "app_id": "12345",
+  "app_name": "production-web-app",
+  "health_score": 7.2,
+  "status": "warning",
+  "summary": "2 high-priority issues detected requiring attention",
+  
+  "issues": [
+    {
+      "id": "iss_001",
+      "severity": "high",
+      "category": "performance",
+      "title": "Response time increased 40%",
+      "description": "Average response time increased from 200ms to 280ms over the last 6 hours",
+      
+      "root_cause": {
+        "category": "code",
+        "description": "N+1 query problem introduced in commit abc123",
+        "confidence": 0.92,
+        "evidence": [
+          {
+            "type": "metric",
+            "description": "Database query count increased from 3 to 47 per request"
+          },
+          {
+            "type": "code",
+            "description": "Missing eager loading in UserController#show"
+          },
+          {
+            "type": "temporal",
+            "description": "Performance degradation started exactly at deployment time"
+          }
+        ]
+      },
+      
+      "impact": {
+        "users_affected": "~5000/hour",
+        "business_impact": "Potential checkout abandonment increase",
+        "severity_explanation": "Affects critical user journey"
+      },
+      
+      "recommendations": [
+        {
+          "type": "code_fix",
+          "priority": 1,
+          "title": "Add eager loading to eliminate N+1 queries",
+          "implementation": {
+            "file": "app/controllers/users_controller.rb",
+            "line_numbers": [28, 28],
+            "before": "@user = User.find(params[:id])",
+            "after": "@user = User.includes(:orders, :addresses).find(params[:id])",
+            "diff": "--- a/app/controllers/users_controller.rb\n+++ b/app/controllers/users_controller.rb\n@@ -28 +28 @@\n-  @user = User.find(params[:id])\n+  @user = User.includes(:orders, :addresses).find(params[:id])"
+          },
+          "expected_impact": "Response time should decrease to ~180ms (10% better than baseline)",
+          "confidence": 0.95
+        },
+        {
+          "type": "monitoring",
+          "priority": 2,
+          "title": "Add database query monitoring",
+          "description": "Install Bullet gem to detect N+1 queries in development"
+        }
+      ]
+    },
+    
+    {
+      "id": "iss_002",
+      "severity": "medium",
+      "category": "cost",
+      "title": "Database instance oversized",
+      "description": "Database CPU utilization consistently below 20%",
+      
+      "recommendations": [
+        {
+          "type": "infrastructure",
+          "title": "Downsize database instance",
+          "details": "Current: db.r5.2xlarge → Recommended: db.r5.xlarge",
+          "estimated_savings": "$600/month",
+          "expected_performance_impact": "Minimal (CPU will increase to ~35%)",
+          "confidence": 0.88
+        }
+      ]
+    }
+  ],
+  
+  "positive_observations": [
+    "Error rate stable at 0.1%",
+    "Apdex score maintaining healthy 0.95",
+    "No memory leaks detected"
+  ],
+  
+  "next_analysis": "2026-02-06T15:30:00Z"
+}
+```
+
+### 14.2 Glossary
+
+| Term | Definition |
+|------|------------|
+| **APM** | Application Performance Monitoring |
+| **Apdex** | Application Performance Index (0-1 score) |
+| **Golden Signals** | Latency, Traffic, Errors, Saturation |
+| **MCP** | Model Context Protocol |
+| **MTTR** | Mean Time To Resolution |
+| **N+1 Query** | Performance antipattern where N queries are executed in a loop |
+| **NRQL** | New Relic Query Language |
+| **P50/P95/P99** | 50th/95th/99th percentile |
+| **SLI** | Service Level Indicator |
+| **SLO** | Service Level Objective |
+
+---
+
+## Document Version History
+
+| Version | Date | Changes | Author |
+|---------|------|---------|--------|
+| 1.0 | 2026-02-06 | Initial specification | AI Monitoring Team |
+
+---
+
+**END OF SPECIFICATION**

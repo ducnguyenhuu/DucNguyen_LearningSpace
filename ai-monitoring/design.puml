@@ -1,0 +1,170 @@
+@startuml JobComparisonApp
+
+!pragma layout smetana
+skinparam linetype ortho
+
+' Main Application Controller
+class JobComparisonApp {
+  - currentJob: CurrentJob
+  - jobOffers: List<JobOffer>
+  - settings: ComparisonSettings
+  + JobComparisonApp()
+  + showMainMenu(): void
+  + enterCurrentJob(): void
+  + saveCurrentJob(job: CurrentJob): void
+  + enterJobOffer(): void
+  + addJobOffer(offer: JobOffer): void
+  + compareOfferWithCurrent(offer: JobOffer): void
+  + adjustSettings(): void
+  + saveSettings(settings: ComparisonSettings): void
+  + compareJobs(): void
+  + compareTwoJobs(job1: Job, job2: Job): void
+  + getRankedJobs(): List<Job>
+}
+
+' Job Entity (Abstract Base Class)
+abstract class Job {
+  - title: String
+  - company: String
+  - location: Location
+  - costOfLivingIndex: int
+  - yearlySalary: double
+  - yearlyBonus: double
+  - stockOptionShares: int
+  - wellnessStipend: double
+  - lifeInsurance: int
+  - personalDevelopmentFund: double
+  + Job()
+  + Job(title, company, location, costOfLivingIndex, yearlySalary, yearlyBonus, stockOptionShares, wellnessStipend, lifeInsurance, personalDevelopmentFund)
+  + getTitle(): String
+  + setTitle(title: String): void
+  + getCompany(): String
+  + setCompany(company: String): void
+  + getLocation(): Location
+  + setLocation(location: Location): void
+  + getCostOfLivingIndex(): int
+  + setCostOfLivingIndex(index: int): void
+  + getYearlySalary(): double
+  + setYearlySalary(salary: double): void
+  + getYearlyBonus(): double
+  + setYearlyBonus(bonus: double): void
+  + getStockOptionShares(): int
+  + setStockOptionShares(shares: int): void
+  + getWellnessStipend(): double
+  + setWellnessStipend(stipend: double): void
+  + getLifeInsurance(): int
+  + setLifeInsurance(percentage: int): void
+  + getPersonalDevelopmentFund(): double
+  + setPersonalDevelopmentFund(fund: double): void
+  + getAdjustedSalary(): double
+  + getAdjustedBonus(): double
+}
+
+' Current Job (User's existing job)
+class CurrentJob {
+  + CurrentJob()
+  + CurrentJob(title, company, location, costOfLivingIndex, yearlySalary, yearlyBonus, stockOptionShares, wellnessStipend, lifeInsurance, personalDevelopmentFund)
+}
+
+' Job Offer (Offered positions)
+class JobOffer {
+  + JobOffer()
+  + JobOffer(title, company, location, costOfLivingIndex, yearlySalary, yearlyBonus, stockOptionShares, wellnessStipend, lifeInsurance, personalDevelopmentFund)
+}
+
+' Location Entity
+class Location {
+  - city: String
+  - state: String
+  + Location()
+  + Location(city: String, state: String)
+  + getCity(): String
+  + setCity(city: String): void
+  + getState(): String
+  + setState(state: String): void
+}
+
+' Comparison Settings
+class ComparisonSettings {
+  - salaryWeight: int
+  - bonusWeight: int
+  - stockWeight: int
+  - wellnessWeight: int
+  - lifeInsuranceWeight: int
+  - developmentFundWeight: int
+  + ComparisonSettings()
+  + getSalaryWeight(): int
+  + setSalaryWeight(weight: int): void
+  + getBonusWeight(): int
+  + setBonusWeight(weight: int): void
+  + getStockWeight(): int
+  + setStockWeight(weight: int): void
+  + getWellnessWeight(): int
+  + setWellnessWeight(weight: int): void
+  + getLifeInsuranceWeight(): int
+  + setLifeInsuranceWeight(weight: int): void
+  + getDevelopmentFundWeight(): int
+  + setDevelopmentFundWeight(weight: int): void
+  + setWeights(salary, bonus, stock, wellness, insurance, fund): void
+  + getTotalWeight(): int
+}
+
+' Job Comparator Utility
+class JobComparator {
+  + {static} calculateJobScore(job: Job, settings: ComparisonSettings): double
+  + {static} rankJobs(jobs: List<Job>, settings: ComparisonSettings): List<Job>
+}
+
+' Relationships
+Job <|-- CurrentJob : inherits
+Job <|-- JobOffer : inherits
+JobComparisonApp "1" o-- "0..1" CurrentJob : currentJob
+JobComparisonApp "1" o-- "0..*" JobOffer : jobOffers
+JobComparisonApp "1" *-- "1" ComparisonSettings : settings
+Job "1" *-- "1" Location : location
+JobComparisonApp ..> JobComparator : uses
+JobComparator ..> Job : uses
+JobComparator ..> ComparisonSettings : uses
+
+note right of JobComparisonApp
+  Entry point of the application.
+  Manages current job, job offers,
+  and comparison settings.
+  Coordinates all user operations.
+end note
+
+note right of Job
+  Abstract base class for job details.
+  CurrentJob and JobOffer inherit
+  all attributes and methods.
+  
+  Calculates adjusted salary/bonus
+  based on cost of living index.
+  
+  Constraints:
+  - wellnessStipend: 0-1200
+  - lifeInsurance: 0-10
+  - personalDevelopmentFund: 0-6000
+end note
+
+note right of ComparisonSettings
+  Manages weights for job comparison.
+  All weights range from 0-9.
+  Default value: 1 for all weights.
+  
+  Used in job score calculation.
+end note
+
+note right of JobComparator
+  Utility class for job comparison logic.
+  
+  calculateJobScore() implements:
+  JS = (w1/total)*AYS + (w2/total)*AYB + 
+       (w3/total)*(SOS/3) + (w4/total)*WS + 
+       (w5/total)*(LI/100*YS) + (w6/total)*PDF
+  
+  where w1-w6 are weights from settings
+  and total is sum of all weights.
+end note
+
+@enduml

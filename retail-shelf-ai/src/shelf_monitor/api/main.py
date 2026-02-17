@@ -28,6 +28,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.shelf_monitor.api.routers import health
 from src.shelf_monitor.config.settings import settings
+from src.shelf_monitor.api.routers import analysis
 
 app = FastAPI(
     #title="Retail Monitoring Research API",
@@ -75,7 +76,7 @@ def root():
 # TODO: Include routers after implementing them
 # from src.shelf_monitor.api.routers import health, analysis, detections
 app.include_router(health.router, prefix="/api/v1", tags=["Health"])
-# app.include_router(analysis.router, prefix="/api/v1", tags=["Analysis"])
+app.include_router(analysis.router, prefix="/api/v1", tags=["Analysis"])
 # app.include_router(detections.router, prefix="/api/v1", tags=["Detections"])
 
 if __name__ == "__main__":
