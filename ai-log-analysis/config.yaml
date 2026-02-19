@@ -15,5 +15,5 @@ logging:
   file_level: DEBUG         # Log file level (capture everything)
   
 defaults:
-  days: 30                  # Default time period for data collection
+  days: 3                  # Default time period for data collection
   profile: dev              # Default profile if not specified
