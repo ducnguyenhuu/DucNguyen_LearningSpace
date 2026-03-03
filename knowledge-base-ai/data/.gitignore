@@ -1,0 +1,6 @@
+# Ignore all runtime data files but keep directory structure
+*
+!.gitignore
+!chromadb/
+chromadb/*
+!chromadb/.gitkeep
