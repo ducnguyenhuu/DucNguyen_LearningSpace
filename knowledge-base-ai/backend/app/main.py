@@ -207,10 +207,13 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
 
 app.include_router(system.router)
 
-# Phase 3 routes (added when implementing US1):
-# from app.api.routes import ingestion, documents
-# app.include_router(ingestion.router, prefix="/api/v1")
-# app.include_router(documents.router, prefix="/api/v1")
+# Phase 3 routes
+from app.api.routes import ingestion  # noqa: E402
+app.include_router(ingestion.router)
+
+# Phase 3 documents route (added when implementing T039):
+# from app.api.routes import documents
+# app.include_router(documents.router)
 
 # Phase 4 routes (added when implementing US2):
 # from app.api.routes import conversations, chat

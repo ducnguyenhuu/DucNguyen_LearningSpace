@@ -1,17 +1,16 @@
 <!-- Sync Impact Report
-Version change: N/A → 1.0.0 (initial ratification)
-Modified principles: N/A (initial creation)
+Version change: 1.0.0 → 1.1.0 (MINOR — new principle VII added)
+Modified principles: None renamed or removed
 Added sections:
-  - Core Principles (6 principles)
-  - Additional Constraints
-  - Development Workflow
-  - Governance
-Removed sections: N/A
+  - Core Principles §VII: Test-After-Implementation Mandate (new)
+  - Additional Constraints §Testing: strengthened language from "MUST cover" to "MUST be written immediately after"
+Removed sections: None
 Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ aligned (Constitution Check section)
-  - .specify/templates/spec-template.md ✅ aligned (no constitution refs needed)
-  - .specify/templates/tasks-template.md ✅ aligned (phase structure matches)
-  - .github/copilot-instructions.md ✅ aligned (code style matches principles)
+  - .specify/templates/tasks-template.md ✅ updated (tests mandatory, not optional)
+  - .specify/templates/plan-template.md ✅ aligned (no changes needed)
+  - .specify/templates/spec-template.md ✅ aligned (no changes needed)
+  - .github/copilot-instructions.md ✅ updated (test-after-implementation rule added)
+  - specs/001-local-knowledge-base/tasks.md ✅ updated (Phase 9 GUIDELINE → MANDATORY)
 Follow-up TODOs: None
 -->
 
@@ -149,6 +148,38 @@ most from seeing working software early and often. Incremental
 delivery reduces risk and provides continuous validation that
 the architecture works end-to-end.
 
+### VII. Test-After-Implementation Mandate (NON-NEGOTIABLE)
+
+Unit tests MUST be written immediately after each functional
+component is completed — NOT deferred to a testing phase at
+the end of the project. This means:
+
+- Every implementation task that produces a new module,
+  service, parser, or provider MUST be followed immediately
+  by a corresponding unit test task before moving to the
+  next implementation task
+- Tests MUST cover: happy paths, error/exception paths,
+  and all edge cases described in the spec
+- A functional task is NOT considered complete until its
+  unit tests exist, run, and pass
+- Deferred test phases (e.g., "Phase 9: Testing") are
+  permitted ONLY for integration tests that require multiple
+  components to exist simultaneously — never for unit tests
+- The task list MUST pair each implementation task with its
+  test task in the same phase/batch, e.g.:
+  - T031 Implement PDF parser → T075 PDF parser unit tests
+  - T034 Implement chunker → T076 Chunker unit tests
+- Test coverage MUST NOT decrease with any merge
+
+**Rationale**: Deferred testing creates a false sense of
+progress, allows subtle contract bugs to compound across
+components, and produces a large, demoralizing test-writing
+burst at the end of the project. Writing tests immediately
+after each function validates the contract while the
+implementation context is fresh, catches regressions
+early, and ensures the test suite grows alongside the
+codebase rather than trailing behind it.
+
 ## Additional Constraints
 
 ### Technology Stack
@@ -177,10 +208,14 @@ the architecture works end-to-end.
 
 - Backend: pytest with coverage reporting (`--cov=app`)
 - Frontend: Vitest + React Testing Library
-- Integration tests MUST verify the full RAG pipeline
-  (ingest → query → answer)
+- Unit tests MUST be written immediately after each
+  implementation task completes (see Principle VII)
 - Unit tests MUST cover parsers, chunker, providers, and
   services independently
+- Integration tests MUST verify the full RAG pipeline
+  (ingest → query → answer)
+- Test coverage MUST NOT decrease; any PR that reduces
+  coverage MUST be rejected at the quality gate
 
 ## Development Workflow
 
@@ -237,4 +272,4 @@ rejected.
 Use `.github/copilot-instructions.md` for runtime
 development guidance.
 
-**Version**: 1.0.0 | **Ratified**: 2026-03-02 | **Last Amended**: 2026-03-02
+**Version**: 1.1.0 | **Ratified**: 2026-03-02 | **Last Amended**: 2026-03-04

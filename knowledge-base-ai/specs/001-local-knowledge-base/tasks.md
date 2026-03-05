@@ -70,14 +70,15 @@
 
 ### Implementation for User Story 1
 
-- [ ] T030 [P] [US1] Create DocumentParser ABC in `backend/app/parsers/base.py` — abstract `parse(file_path)→ParsedDocument` returning text content + page/section metadata
-- [ ] T031 [P] [US1] Implement PDF parser using PyMuPDF in `backend/app/parsers/pdf_parser.py` — extract text per page, preserve page numbers, handle corrupted/unreadable files gracefully (skip file, log error with filename, continue — per Edge Case §corrupted)
-- [ ] T032 [P] [US1] Implement DOCX parser using python-docx in `backend/app/parsers/docx_parser.py` — extract paragraphs with section headings, handle corrupted files gracefully. For very large documents (500+ pages), use iterative paragraph extraction to manage memory (Edge Case §large-document)
-- [ ] T033 [P] [US1] Implement Markdown parser in `backend/app/parsers/markdown_parser.py` — extract text preserving heading structure, handle malformed markdown gracefully
-- [ ] T034 [US1] Implement text chunker in `backend/app/parsers/chunker.py` — configurable CHUNK_SIZE and CHUNK_OVERLAP from config, preserve paragraph and section boundaries (FR-002); when the next boundary would produce a chunk larger than CHUNK_SIZE × 1.5, force-split at CHUNK_SIZE with overlap. Return list of chunks with position metadata
-- [ ] T035 [US1] Implement embedding service in `backend/app/services/embedding.py` — delegates to EmbeddingProvider via DI, embed single text and batch embed, tag each vector with model_version metadata (FR-021)
-- [ ] T036 [US1] Implement ingestion service in `backend/app/services/ingestion.py` — full pipeline: pre-flight disk space check (warn and return 400 if below configurable threshold, Edge Case §disk-space), validate source_folder path (exists, is_dir, resolve symlinks via `os.path.realpath()`, FR-023), enforce single active job (FR-022, check IngestionJob status=running → raise 409), scan folder recursively, skip files not matching `.pdf`/`.docx`/`.md` extensions with WARNING log (FR-016), compute SHA-256 file hashes, detect new/modified/deleted files (FR-005), create IngestionJob record, for each file: update Document status pending→processing→completed/failed, parse → chunk → embed → store in ChromaDB, remove deleted Document + ChromaDB chunks, resume-safe on crash (skip completed, re-process processing/pending, FR-005), emit progress events via callback, log all operations with structured fields
-- [ ] T037 [US1] Implement ingestion REST routes in `backend/app/api/routes/ingestion.py` — POST /ingestion/start (202 Accepted, request body per api-contracts.md §1.1, errors 400/409), GET /ingestion/status/{job_id} (200 with full status per §1.2, error 404)
+- [X] T030 [P] [US1] Create DocumentParser ABC in `backend/app/parsers/base.py` — abstract `parse(file_path)→ParsedDocument` returning text content + page/section metadata
+- [X] T031 [P] [US1] Implement PDF parser using PyMuPDF in `backend/app/parsers/pdf_parser.py` — extract text per page, preserve page numbers, handle corrupted/unreadable files gracefully (skip file, log error with filename, continue — per Edge Case §corrupted)
+- [X] T032 [P] [US1] Implement DOCX parser using python-docx in `backend/app/parsers/docx_parser.py` — extract paragraphs with section headings, handle corrupted files gracefully. For very large documents (500+ pages), use iterative paragraph extraction to manage memory (Edge Case §large-document)
+- [X] T033 [P] [US1] Implement Markdown parser in `backend/app/parsers/markdown_parser.py` — extract text preserving heading structure, handle malformed markdown gracefully
+- [X] T033b [P] [US1] Implement Excel parser using openpyxl in `backend/app/parsers/excel_parser.py` — iterate sheets, use sheet names as section headings (level 1), convert rows to readable `key: value` or tab-separated text, handle password-protected workbooks and corrupted files gracefully. Support `.xlsx` only; skip `.xls` with a WARNING log directing user to convert to .xlsx.
+- [X] T034 [US1] Implement text chunker in `backend/app/parsers/chunker.py` — configurable CHUNK_SIZE and CHUNK_OVERLAP from config, preserve paragraph and section boundaries (FR-002); when the next boundary would produce a chunk larger than CHUNK_SIZE × 1.5, force-split at CHUNK_SIZE with overlap. Return list of chunks with position metadata
+- [X] T035 [US1] Implement embedding service in `backend/app/services/embedding.py` — delegates to EmbeddingProvider via DI, embed single text and batch embed, tag each vector with model_version metadata (FR-021)
+- [X] T036 [US1] Implement ingestion service in `backend/app/services/ingestion.py` — full pipeline: pre-flight disk space check (warn and return 400 if below configurable threshold, Edge Case §disk-space), validate source_folder path (exists, is_dir, resolve symlinks via `os.path.realpath()`, FR-023), enforce single active job (FR-022, check IngestionJob status=running → raise 409), scan folder recursively, skip files not matching `.pdf`/`.docx`/`.md` extensions with WARNING log (FR-016), compute SHA-256 file hashes, detect new/modified/deleted files (FR-005), create IngestionJob record, for each file: update Document status pending→processing→completed/failed, parse → chunk → embed → store in ChromaDB, remove deleted Document + ChromaDB chunks, resume-safe on crash (skip completed, re-process processing/pending, FR-005), emit progress events via callback, log all operations with structured fields
+- [X] T037 [US1] Implement ingestion REST routes in `backend/app/api/routes/ingestion.py` — POST /ingestion/start (202 Accepted, request body per api-contracts.md §1.1, errors 400/409), GET /ingestion/status/{job_id} (200 with full status per §1.2, error 404)
 - [ ] T038 [US1] Implement ingestion WebSocket in `backend/app/api/routes/ingestion.py` — WS /ingestion/progress/{job_id} (send progress, file_complete, file_error, completed messages per api-contracts.md §1.3)
 - [ ] T039 [P] [US1] Implement document REST routes in `backend/app/api/routes/documents.py` — GET /documents (paginated list with status filter per §1.4), GET /documents/{id} (detail with has_summary flag per §1.5, 404), DELETE /documents/{id} (remove doc + ChromaDB chunks per §1.6, 404)
 - [ ] T040 [P] [US1] Create DocumentTable component in `frontend/src/components/documents/DocumentTable.tsx` — sortable table (name, type, chunks, actions), click name → DocumentDetail, summary button per frontend-contract.md §2.2
@@ -182,11 +183,11 @@
 
 **Purpose**: Unit and integration tests per constitution §Testing mandate — "Unit tests MUST cover parsers, chunker, providers, and services independently" and "Integration tests MUST verify the full RAG pipeline"
 
-**⚠️ GUIDELINE**: Write tests alongside or immediately after implementing each user story. Tasks listed here provide the test file structure; actual test cases should be added incrementally as features are built.
+**⚠️ MANDATORY (Constitution §VII)**: Unit tests MUST be written immediately after each implementation task completes — NOT deferred. A task is NOT done until its unit tests pass. Integration tests (T079–T081) alone may be deferred until all pipeline components exist, but unit tests for every module are non-negotiable.
 
-- [ ] T074 [P] Create test configuration and fixtures in `backend/tests/conftest.py` — in-memory SQLite test DB, mock ChromaDB collection, mock EmbeddingProvider and LLMProvider, sample document fixtures (PDF, DOCX, MD), temp directory with test files
-- [ ] T075 [P] Write parser unit tests in `backend/tests/unit/test_parsers.py` — test PDF extraction (multi-page, corrupted), DOCX extraction (headings, empty), MD extraction (headings, malformed), verify ParsedDocument output structure
-- [ ] T076 [P] Write chunker unit tests in `backend/tests/unit/test_chunker.py` — test chunk size/overlap config, boundary preservation, force-split at 1.5× threshold, empty input, single-paragraph input, position metadata
+- [X] T074 [P] Create test configuration and fixtures in `backend/tests/conftest.py` — in-memory SQLite test DB, mock ChromaDB collection, mock EmbeddingProvider and LLMProvider, sample document fixtures (PDF, DOCX, MD), temp directory with test files
+- [X] T075 [P] Write parser unit tests in `backend/tests/unit/test_parsers.py` — test PDF extraction (multi-page, corrupted), DOCX extraction (headings, empty), MD extraction (headings, malformed), Excel extraction (multi-sheet, empty sheet, password-protected), verify ParsedDocument output structure
+- [X] T076 [P] Write chunker unit tests in `backend/tests/unit/test_chunker.py` — test chunk size/overlap config, boundary preservation, force-split at 1.5× threshold, empty input, single-paragraph input, position metadata
 - [ ] T077 [P] Write provider unit tests in `backend/tests/unit/test_providers.py` — test LocalEmbeddingProvider embed/embed_batch (mock model), LocalLLMProvider generate/stream (mock Ollama HTTP), factory instantiation for all registered providers, unknown provider error
 - [ ] T078 [P] Write service unit tests in `backend/tests/unit/test_services.py` — test ingestion service (new/modified/deleted detection, crash recovery, single-job enforcement, path validation, unsupported file skip), chat service (RAG prompt construction, sliding window, no-results handling), retrieval service (threshold filtering), summary service (iterative summarization, caching), embedding service (model_version tagging)
 - [ ] T079 Write ingestion integration test in `backend/tests/integration/test_ingestion.py` — end-to-end: create temp folder with sample files → call ingestion service → verify Documents in DB + chunks in ChromaDB → add/modify/delete files → re-ingest → verify incremental behavior
@@ -245,7 +246,7 @@ Phase 9: Testing (alongside or after each story)
 
 **Phase 2** (16 parallel): T008-T013 (all models + vector store), T015-T017 (ABC + providers), T024-T029 (all frontend setup) can run simultaneously after T007
 
-**Phase 3 US1** (6 parallel): T030-T033 (all parsers), T040-T041 (frontend components) can run simultaneously
+**Phase 3 US1** (7 parallel): T030-T033, T033b (all parsers), T040-T041 (frontend components) can run simultaneously
 
 **Phase 4 US2** (3 parallel): T049-T051 (frontend chat components) can run simultaneously
 
@@ -304,6 +305,7 @@ Batch 2 (depends on T030):
   T031  pdf_parser.py
   T032  docx_parser.py
   T033  markdown_parser.py
+  T033b excel_parser.py
   T034  chunker.py
 
 Batch 3 (depends on Batch 2):

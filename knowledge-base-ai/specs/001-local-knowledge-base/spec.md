@@ -25,17 +25,18 @@
 
 ### User Story 1 - Document Ingestion & Indexing (Priority: P1)
 
-As a knowledge base owner, I want to point the application at a folder of documents (Word, Markdown, PDF) so that all content is automatically chunked, embedded, and stored in a local vector database — making it searchable later.
+As a knowledge base owner, I want to point the application at a folder of documents (Word, Markdown, PDF, Excel) so that all content is automatically chunked, embedded, and stored in a local vector database — making it searchable later.
 
 **Why this priority**: Without ingested and indexed documents, no querying can happen. This is the foundational data pipeline that everything else depends on.
 
-**Independent Test**: Can be fully tested by pointing the application at a folder containing sample Word, MD, and PDF files, running the ingestion process, and verifying that all documents are chunked, embedded, and retrievable from the vector database.
+**Independent Test**: Can be fully tested by pointing the application at a folder containing sample Word, MD, PDF, and Excel files, running the ingestion process, and verifying that all documents are chunked, embedded, and retrievable from the vector database.
 
 **Acceptance Scenarios**:
 
-1. **Given** a folder containing 10 mixed-format documents (Word, MD, PDF), **When** I trigger the ingestion process, **Then** all documents are parsed, chunked, embedded, and stored in the vector database with no errors.
+1. **Given** a folder containing 10 mixed-format documents (Word, MD, PDF, Excel), **When** I trigger the ingestion process, **Then** all documents are parsed, chunked, embedded, and stored in the vector database with no errors.
 2. **Given** a folder containing a 100-page PDF, **When** I trigger ingestion, **Then** the document is split into appropriately sized chunks (preserving paragraph/section boundaries where possible) and each chunk is embedded and stored.
-3. **Given** a folder with an unsupported file type (e.g., `.xlsx`), **When** I trigger ingestion, **Then** the unsupported file is skipped with a clear log message, and all supported files are still processed.
+3. **Given** a folder with an unsupported file type (e.g., `.pptx`), **When** I trigger ingestion, **Then** the unsupported file is skipped with a clear log message, and all supported files are still processed.
+7. **Given** an Excel file (`.xlsx`) with multiple sheets, **When** I trigger ingestion, **Then** all sheets are parsed with sheet names preserved as section headings, and the merged content is chunked and embedded.
 4. **Given** a previously ingested folder with 1 new document added, **When** I trigger ingestion again, **Then** only the new or modified documents are processed (incremental ingestion), and existing data is not duplicated.
 5. **Given** a previously ingested folder with 1 document removed, **When** I trigger ingestion again, **Then** the system detects the deletion and removes all associated chunks and embeddings from the vector database.
 6. **Given** a folder of 20 documents, **When** I trigger ingestion, **Then** the web UI displays a real-time progress indicator showing the current file, documents completed vs total, and estimated time remaining.
@@ -157,7 +158,7 @@ As a developer, I want the embedding and LLM model integrations to be abstracted
 
 ### Key Entities
 
-- **Document**: A source file (Word, MD, PDF) from the knowledge folder. Key attributes: file path, file type, file hash (for change detection), last ingested timestamp.
+- **Document**: A source file (Word, MD, PDF, Excel (.xlsx)) from the knowledge folder. Key attributes: file path, file type, file hash (for change detection), last ingested timestamp.
 - **Chunk**: A segment of text extracted from a Document. Key attributes: text content, position/order within document, parent document reference.
 - **Embedding**: A vector representation of a Chunk. Key attributes: vector data, associated chunk reference, model version used.
 - **Conversation**: A session of questions and answers between a user and the system. Key attributes: creation timestamp, title/preview, list of messages.
@@ -168,7 +169,7 @@ As a developer, I want the embedding and LLM model integrations to be abstracted
 
 ### Measurable Outcomes
 
-- **SC-001**: Users can ingest a folder of 50 mixed-format documents (totaling ~500 pages) in under 30 minutes on a standard consumer laptop.
+- **SC-001**: Users can ingest a folder of 50 mixed-format documents (totaling ~500 pages, including Excel spreadsheets) in under 30 minutes on a standard consumer laptop.
 - **SC-002**: Users receive answers to questions within 30 seconds of submitting them (including embedding, retrieval, and LLM generation).
 - **SC-003**: Answers reference the correct source documents at least 80% of the time when the information exists in the knowledge base.
 - **SC-004**: The system correctly identifies and responds "no relevant information found" for at least 90% of queries about topics not covered in the knowledge base.

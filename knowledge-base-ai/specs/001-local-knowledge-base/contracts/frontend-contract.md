@@ -151,3 +151,236 @@ Per Constitution Principle I (Production-Grade Architecture), every error MUST b
 | Unhandled exception | React Error Boundary catches and renders fallback UI with "Report Issue" option |
 
 **React Error Boundary**: Wrap each route-level component in an Error Boundary. Log caught errors to console with `request_id` context when available.
+
+---
+
+## 7. Loading & Empty States
+
+### 7.1 Loading States
+
+Every page that fetches server data shows a loading indicator while the initial request is in flight:
+
+| Page | Loading UI |
+|------|-----------|
+| Dashboard | Skeleton cards for stat tiles + skeleton list rows for recent conversations |
+| DocumentList | Skeleton table rows (5 rows) while GET /documents in flight |
+| ChatView | Skeleton message bubbles (3 alternating user/assistant) while loading conversation history |
+| DocumentDetail | Skeleton text blocks for metadata + summary area |
+| Settings | Skeleton form fields while GET /config in flight |
+
+Use `<LoadingSpinner />` for full-page initial loads; skeleton CSS (gray animated blocks) for content areas. Show stale data with a subtle "Refreshing…" indicator on re-fetches.
+
+### 7.2 Empty States
+
+| Scenario | UI Behavior |
+|----------|-------------|
+| No documents ingested (DocumentList) | Centered illustration + "No documents yet" heading + "Run Ingest to get started" subtext + "Run Ingest" CTA button |
+| No conversations (sidebar) | "No conversations yet" text + "Start a new chat" link → `/chat` |
+| No messages in new chat (ChatView) | Centered welcome message: "Ask anything about your documents" with 3 example prompt suggestions |
+| No summary yet (DocumentDetail) | "No summary generated yet" placeholder + "Generate Summary" button |
+| DocumentList with status filter — no results | "No documents match this filter" with "Clear filter" link |
+
+---
+
+## 8. UX Interaction Details
+
+### 8.1 Settings Page
+
+**Fields displayed** (read from GET /config, editable where noted):
+
+| Field | Label | Editable | Validation |
+|-------|-------|----------|------------|
+| `knowledge_folder` | Knowledge Folder Path | Yes | Required; non-empty string |
+| `embedding_model` | Embedding Model | Read-only | — |
+| `llm_model` | LLM Model | Read-only | — |
+| `chunk_size` | Chunk Size | Yes | Integer 100–4000 |
+| `chunk_overlap` | Chunk Overlap | Yes | Integer 0–(chunk_size − 1) |
+| `retrieval_top_k` | Retrieval Top-K | Yes | Integer 1–20 |
+| `retrieval_similarity_threshold` | Similarity Threshold | Yes | Float 0.0–1.0 |
+| `sliding_window_messages` | Conversation Window | Yes | Integer 1–50 |
+
+**Save behavior**: "Save" button submits changed fields. Show success toast "Settings saved" on success; error toast on failure. Read-only fields display as plain text with a lock icon.
+
+### 8.2 Document Deletion
+
+- Each row in DocumentTable has a delete icon (🗑) in the Actions column.
+- Clicking opens a confirmation dialog: "Delete [filename]? This will remove the document and all its indexed chunks. This cannot be undone." with "Cancel" / "Delete" buttons.
+- On confirm: call DELETE /documents/{id}, remove row, show success toast "Document deleted".
+- On 404 error: toast "Document not found" and refresh the list.
+
+### 8.3 Conversation Deletion (supplement to §2.1)
+
+- Confirmation text: "Delete this conversation? All messages will be permanently removed."
+- After delete of active conversation: navigate to `/chat`.
+- "Clear All" confirmation: "Delete all conversations? This cannot be undone." with a checkbox "I understand" that must be checked before the button is enabled.
+
+### 8.4 Conversation Title
+
+- Titles are **auto-generated only** — first 60 chars of the first user message (server-assigned).
+- Manual rename is **not supported** in this version.
+
+### 8.5 Pagination & Scroll
+
+- DocumentList: single scrollable table (scope ≤ 200 docs). If API returns `next_cursor`, show "Load More" button at the bottom; no page numbers.
+- Conversation sidebar: single scrollable list; same "Load More" pattern if needed.
+
+### 8.6 DocumentDetail Page
+
+```
+┌─────────────────────────────────────────────┐
+│ ← Back to Documents                         │
+│                                             │
+│ architecture-guide.pdf                      │
+│ ─────────────────────────────────────────── │
+│ Type: PDF  │  Size: 2.3 MB  │  Chunks: 42  │
+│ Ingested: 2026-03-02 14:22                  │
+│                                             │
+│ ┌─────────────────────────────────────────┐ │
+│ │ Summary                  [↻ Regenerate] │ │
+│ │                                         │ │
+│ │ This document covers ...                │ │
+│ │                                         │ │
+│ │ Sections referenced:                    │ │
+│ │ • §3.1 Architecture Overview (p. 12)    │ │
+│ │ • §4.2 API Design (p. 28)              │ │
+│ └─────────────────────────────────────────┘ │
+│                          [Generate Summary]  │
+└─────────────────────────────────────────────┘
+```
+
+**Behaviors**:
+- "Generate Summary" when `has_summary = false`; calls POST /documents/{id}/summary.
+- While generating: spinner + "Generating summary…"; poll GET /documents/{id}/summary every 2s.
+- "Regenerate" when summary exists; same flow.
+- Error: inline "Summary generation failed. Try again." with retry button.
+
+### 8.7 Run Ingest Button
+
+- `knowledge_folder` configured: "Run Ingest" calls POST /ingestion/start directly.
+- `knowledge_folder` empty: toast "Please set a Knowledge Folder in Settings before ingesting." with link to Settings.
+- While job active: button disabled, label "Ingesting…".
+- On 409 Conflict: toast "An ingestion job is already in progress."
+
+### 8.8 Source Citations Format
+
+- Inline numbered badges: **[1]**, **[2]** inserted at the referenced point in the assistant message.
+- Clicking a badge opens/highlights the corresponding source in the SourcePanel.
+- SourcePanel shows: document filename, page number (if available), relevance score as percentage ("87% match").
+
+### 8.9 Markdown Rendering
+
+Supported in assistant messages: headings (H1–H4), bold, italic, inline code, fenced code blocks with syntax highlighting, ordered/unordered lists, blockquotes, horizontal rules, links, GFM tables.
+
+Not supported: LaTeX/math, images, raw HTML (stripped).
+
+### 8.10 Auto-Scroll Behavior
+
+- Auto-scrolls to latest message on: new user message submitted, streaming tokens arriving.
+- Pauses if user manually scrolls up (≥ 100px from bottom).
+- "⬇ Jump to latest" button appears when paused; clicking resumes auto-scroll.
+
+### 8.11 Dashboard Quick Actions
+
+| Button | Action |
+|--------|--------|
+| "+ New Chat" | Navigate to `/chat` |
+| "Ingest Docs" | Navigate to `/documents` |
+| "Settings" | Navigate to `/settings` |
+
+Stat card data sources (loaded on page mount; refresh via "↻" icon):
+- **Docs**: GET /documents total count
+- **Chats**: GET /conversations total count
+- **Models**: GET /health `status` field ("ok" → ✓ green, "degraded" → ⚠ yellow, "error" → ✗ red)
+
+### 8.12 Estimated Time Remaining (ETR)
+
+- Formula: `ETR = (elapsed_ms / processed_files) × remaining_files`
+- Display: "~X min Y sec remaining"
+- Fallback: "Calculating…" until ≥ 2 files processed; "~X hr remaining" if ETR > 60 min.
+
+### 8.13 Chat When No Documents Ingested
+
+- Chat input is not blocked; submissions are allowed.
+- Assistant returns: "No documents have been indexed yet. Please ingest documents first, then ask your question."
+
+### 8.14 Deleted Conversation Navigation
+
+- `/chat/:id` with non-existent ID → API returns 404.
+- Show toast "Conversation not found" then redirect to `/chat` within 1 second.
+
+### 8.15 Reconnection Banner (supplement to §6)
+
+- Position: fixed top of viewport, full-width, yellow/warning background.
+- Text: "Connection lost — reconnecting…" with spinner.
+- No auto-dismiss; disappears only on successful reconnection.
+- After 5 failed retries: text changes to "Unable to reconnect. Please refresh the page." + "Refresh" button; spinner stops.
+
+### 8.16 Re-Embedding Progress UI (FR-021, supplement to §6)
+
+- Same progress bar component as manual ingestion is shown on `/documents`.
+- Persistent info banner on all pages: "Re-embedding documents due to model update…" with "View Progress" link to `/documents`.
+- Banner dismissed automatically when GET /health returns `reembedding.in_progress = false`.
+
+---
+
+## 9. Accessibility Baseline (WCAG 2.1 AA)
+
+### 9.1 Keyboard Navigation
+
+- All interactive elements reachable via `Tab` in logical DOM order.
+- Enter/Space activate buttons and links; Escape closes modals.
+- Document table row: pressing Enter on a filename navigates to DocumentDetail.
+
+### 9.2 ARIA & Screen Reader
+
+| Element | ARIA Requirement |
+|---------|-----------------|
+| Chat message list | `role="log"`, `aria-live="polite"` |
+| Streaming response area | `aria-live="polite"` during streaming; `aria-live="off"` when complete |
+| Progress bar | `role="progressbar"`, `aria-valuenow`, `aria-valuemin="0"`, `aria-valuemax="100"` |
+| "Reconnecting" banner | `role="alert"`, `aria-live="assertive"` |
+| Active sidebar nav item | `aria-current="page"` |
+| Icon-only buttons | `aria-label` (e.g., `aria-label="Delete conversation"`) |
+| Confirmation dialogs | `role="dialog"`, `aria-modal="true"`, `aria-labelledby` → dialog title |
+
+### 9.3 Focus Management
+
+- Modal open: focus moves to first focusable element inside the dialog.
+- Modal close: focus returns to the triggering element.
+- After sending a message: focus returns to the chat input box.
+- After route change: focus moves to the page `<h1>`.
+
+### 9.4 Color Contrast
+
+- Body text on background: ≥ 4.5:1.
+- Large text (18pt+ or 14pt bold): ≥ 3:1.
+- UI component boundaries: ≥ 3:1.
+- Status colors (red/yellow/green) paired with icon or text label — never color-only.
+
+### 9.5 Skip Navigation
+
+- Visually-hidden "Skip to main content" link as first focusable element on every page.
+- ChatView additional skip links: "Skip to chat" and "Skip to sources".
+
+---
+
+## 10. Responsive Interaction Details
+
+### 10.1 Tablet Sidebar (768–1023px)
+
+- Collapses to 48px-wide icon-only strip.
+- Tapping an icon expands the sidebar as a full-width overlay (does not push content).
+- Tap outside or press Escape to close.
+
+### 10.2 Mobile Tab Navigation (<768px)
+
+- Bottom tab bar: **Chat** (💬), **Documents** (📄), **Settings** (⚙).
+- Default active tab on load: **Chat**.
+- Active tab: filled/colored icon; others outlined/grey.
+- Supports both tap and left/right swipe to switch tabs.
+
+### 10.3 Source Panel on Mobile
+
+- Hidden by default during mobile browsing.
+- Appears as a bottom-sheet modal (60% viewport height, draggable to dismiss) when a citation badge is tapped.
+- Close via drag-down, backdrop tap, or "✕" button.

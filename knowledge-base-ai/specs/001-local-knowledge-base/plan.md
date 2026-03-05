@@ -5,7 +5,7 @@
 
 ## Summary
 
-Build a local knowledge base application (similar to NotebookLM) with two phases: (1) document ingestion — parsing Word/MD/PDF files, chunking, embedding via a distilled model, and storing in a vector database; (2) conversational querying — a React web chatbot that retrieves relevant context via similarity search and generates answers using a local distilled LLM. The architecture uses a provider abstraction layer to enable future migration to commercial embedding/LLM APIs (Claude, Copilot).
+Build a local knowledge base application (similar to NotebookLM) with two phases: (1) document ingestion — parsing Word/MD/PDF/Excel files, chunking, embedding via a distilled model, and storing in a vector database; (2) conversational querying — a React web chatbot that retrieves relevant context via similarity search and generates answers using a local distilled LLM. The architecture uses a provider abstraction layer to enable future migration to commercial embedding/LLM APIs (Claude, Copilot).
 
 ## Technical Context
 
@@ -98,6 +98,7 @@ knowledge-base-ai/
 │   │   │   ├── pdf_parser.py        # PyMuPDF extraction
 │   │   │   ├── docx_parser.py       # python-docx extraction
 │   │   │   ├── markdown_parser.py   # Markdown text extraction
+│   │   │   ├── excel_parser.py      # openpyxl extraction (.xlsx)
 │   │   │   └── chunker.py           # Text splitter (size + overlap + boundaries)
 │   │   ├── db/
 │   │   │   ├── database.py          # SQLAlchemy engine, session factory

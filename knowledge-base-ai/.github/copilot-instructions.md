@@ -10,7 +10,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-02
 - **LLM**: Phi-3.5-mini-Instruct (Q4_K_M) via Ollama
 - **Vector Database**: ChromaDB 0.5+
 - **SQL Database**: SQLite via SQLAlchemy 2.0+ (PostgreSQL for server deployment)
-- **Document Parsing**: python-docx, PyMuPDF, markdown
+- **Document Parsing**: python-docx, PyMuPDF, markdown, openpyxl
 - **Logging**: structlog (JSON format)
 - **Testing**: pytest, React Testing Library, Vitest
 
@@ -78,7 +78,7 @@ docker-compose up --build -d
 
 ## Constitution Reference
 
-See `.specify/memory/constitution.md` (v1.0.0) for governing principles:
+See `.specify/memory/constitution.md` (v1.1.0) for governing principles:
 
 1. **Production-Grade Architecture** — Clean layer separation, explicit errors, externalized config
 2. **REST API Contract Boundary** — All frontend↔backend via `/api/v1/`; contracts documented first
@@ -86,6 +86,7 @@ See `.specify/memory/constitution.md` (v1.0.0) for governing principles:
 4. **Structured Observability** — JSON logs via structlog; `request_id` on every request
 5. **Lightweight & User-Friendly UI** — Pages interactive <2s; feedback on all long-running ops
 6. **Incremental Delivery** — Each user story independently testable and deployable
+7. **Test-After-Implementation Mandate** — Unit tests MUST be written immediately after each implementation task; a task is NOT done until its tests pass
 
 ## Quality Gates
 
@@ -100,6 +101,14 @@ npx tsc --noEmit           # Type checking
 npx eslint src/            # Linting
 npm test                   # Tests
 ```
+
+## Test-After-Implementation Rule (Constitution §VII)
+
+> **NON-NEGOTIABLE**: After completing any implementation task (parser, service, provider, API route,
+> frontend component), write and run its unit tests **before** moving to the next task.
+> A task is considered incomplete until `pytest` (or `npm test`) reports all related tests passing.
+> Coverage MUST NOT decrease. Integration tests for multi-component pipelines may follow after
+> all pipeline components exist, but unit tests are never deferred.
 
 ## Code Style
 
@@ -123,7 +132,7 @@ npm test                   # Tests
 
 ## Recent Changes
 
-### 001-local-knowledge-base (2026-03-02)
+### 001-local-knowledge-base (2026-03-04)
 - Initial feature: Document ingestion pipeline, RAG chatbot, conversation history
 - Added: Provider abstraction for embedding + LLM models
 - Added: On-demand document summarization
@@ -131,6 +140,8 @@ npm test                   # Tests
 - Added: Single ingestion job enforcement (FR-022), path validation with symlink resolution (FR-023)
 - Added: Crash-recovery resume-safe ingestion (FR-005)
 - Added: Conversation delete/clear-all with confirmation (FR-024)
+- Added: Excel (.xlsx) document parsing support
+- Added: Constitution §VII Test-After-Implementation Mandate (v1.1.0)
 - Tech stack: Python/FastAPI + React/TypeScript + ChromaDB + SQLite + Ollama
 
 <!-- MANUAL ADDITIONS START -->

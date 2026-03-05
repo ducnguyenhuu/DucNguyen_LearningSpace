@@ -156,7 +156,7 @@ The stack fits comfortably in 8GB with ~1GB headroom.
 | LLM Runtime | Ollama | latest | Model management, inference server |
 | Vector DB | ChromaDB | 0.5+ | Embedding storage and similarity search |
 | SQL DB | SQLite + SQLAlchemy | 3.x / 2.0+ | Conversation history, document metadata |
-| Document Parsing | python-docx, PyMuPDF, markdown | latest | Word, PDF, Markdown extraction |
+| Document Parsing | python-docx, PyMuPDF, markdown, openpyxl | latest | Word, PDF, Markdown, Excel extraction |
 | WebSocket | FastAPI WebSockets | built-in | Real-time ingestion progress, streaming responses |
 | Testing | pytest + React Testing Library | latest | Backend + frontend tests |
 

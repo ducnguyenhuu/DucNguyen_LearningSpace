@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     chunk_size: int = Field(default=1000, gt=0)
     chunk_overlap: int = Field(default=200, ge=0)
 
+    # ── Ingestion ─────────────────────────────────────────────────────────────
+    min_disk_space_mb: int = Field(
+        default=500,
+        gt=0,
+        description="Minimum free disk space (MB) required before ingestion starts",
+    )
+
     # ── Conversation ──────────────────────────────────────────────────────────
     sliding_window_messages: int = Field(default=10, gt=0)
 

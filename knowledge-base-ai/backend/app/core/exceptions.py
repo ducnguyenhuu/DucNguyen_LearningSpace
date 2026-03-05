@@ -84,6 +84,18 @@ class ConversationNotFoundError(AppError):
         self.conversation_id = conversation_id
 
 
+class IngestionJobNotFoundError(AppError):
+    """Raised when a requested ingestion job does not exist in the database."""
+
+    def __init__(self, job_id: str) -> None:
+        super().__init__(
+            message=f"Ingestion job '{job_id}' not found.",
+            code="ingestion_job_not_found",
+            status_code=HTTPStatus.NOT_FOUND,
+        )
+        self.job_id = job_id
+
+
 # ---------------------------------------------------------------------------
 # 409 Conflict
 # ---------------------------------------------------------------------------
