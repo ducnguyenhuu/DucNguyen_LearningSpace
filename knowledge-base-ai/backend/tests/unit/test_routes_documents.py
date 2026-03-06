@@ -126,7 +126,7 @@ def _make_db_for_docs(docs: list[Document], summary_count: int = 0) -> AsyncMock
         return result
 
     db.execute = _execute
-    db.delete = MagicMock()
+    db.delete = AsyncMock()
     db.commit = AsyncMock()
     return db
 

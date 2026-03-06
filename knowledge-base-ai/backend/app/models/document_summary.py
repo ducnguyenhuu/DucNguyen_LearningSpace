@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.dialects.sqlite import JSON
@@ -44,7 +44,7 @@ class DocumentSummary(Base):
         nullable=False,
         comment="LLM-generated full summary text",
     )
-    section_references: Mapped[list[dict] | None] = mapped_column(
+    section_references: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSON,
         nullable=True,
         comment="Array of {section, page, contribution}",

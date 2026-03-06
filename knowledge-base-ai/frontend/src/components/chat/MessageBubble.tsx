@@ -59,7 +59,6 @@ export function MessageBubble({ message, onSourceClick }: MessageBubbleProps) {
         ) : (
           <div
             className="message-bubble__markdown"
-            // eslint-disable-next-line react/no-danger
             dangerouslySetInnerHTML={{ __html: formatMarkdown(message.content) }}
           />
         )}

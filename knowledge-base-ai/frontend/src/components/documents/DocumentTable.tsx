@@ -284,7 +284,7 @@ export default function DocumentTable({
           fileName={pendingDelete.file_name}
           deleting={deleting}
           error={deleteError}
-          onConfirm={handleDeleteConfirm}
+          onConfirm={() => { void handleDeleteConfirm(); }}
           onCancel={handleDeleteCancel}
         />
       )}

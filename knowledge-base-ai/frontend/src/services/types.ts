@@ -143,6 +143,14 @@ export interface ConversationListResponse {
   total: number;
 }
 
+export interface ConversationDetailResponse {
+  id: string;
+  title: string | null;
+  messages: Message[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CreateConversationRequest {
   title?: string;
 }

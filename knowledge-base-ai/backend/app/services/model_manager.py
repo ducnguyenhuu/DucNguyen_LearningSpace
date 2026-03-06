@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+from typing import Any
 
 import httpx
 
@@ -52,7 +53,7 @@ class ModelManager:
         self._embedding_provider = embedding_provider
         self._llm_provider = llm_provider
         self.is_reembedding: bool = False
-        self._reembed_task: asyncio.Task | None = None
+        self._reembed_task: asyncio.Task[None] | None = None
 
     # ------------------------------------------------------------------
     # Startup
@@ -174,10 +175,108 @@ class ModelManager:
         )
         log.info("reembed_job_scheduled")
         self.is_reembedding = True
-        # Actual re-embed is triggered by the ingestion service when it sees
-        # trigger_reason='reembed' in a new IngestionJob.  The model manager
-        # only sets the flag here; the caller (main.py lifespan) is responsible
-        # for creating and starting the IngestionJob.
+        self._reembed_task = asyncio.create_task(
+            self._run_reembed_background(stored_version, configured_model)
+        )
+
+    # ------------------------------------------------------------------
+    # Background re-embedding (FR-021)
+    # ------------------------------------------------------------------
+
+    async def _run_reembed_background(
+        self, stored_version: str, configured_model: str
+    ) -> None:
+        """Create an IngestionJob(trigger_reason='reembed') and run the pipeline.
+
+        Called as an asyncio background task when a model-version mismatch is
+        detected at startup.  Broadcasts a ``reembed_started`` WS event so any
+        connected frontend clients can react immediately (FR-021).
+
+        Sets :attr:`is_reembedding` to ``False`` when the pipeline finishes
+        (success or failure) so ``GET /health`` reflects the correct state.
+        """
+        # Late imports to avoid circular dependency:
+        # model_manager ← services ← api/routes would be circular.
+        from app.api.routes.ingestion import _subscriptions, broadcast_event
+        from app.db.database import get_session
+        from app.parsers import Chunker
+        from app.services.embedding import EmbeddingService
+        from app.services.ingestion import IngestionService
+
+        source_folder = settings.knowledge_folder
+        if not source_folder:
+            log.warning(
+                "reembed_skipped",
+                reason="knowledge_folder_not_configured",
+            )
+            self.is_reembedding = False
+            return
+
+        try:
+            async with get_session() as db:
+                embed_svc = EmbeddingService(self._embedding_provider)
+                chunker = Chunker.from_settings(settings)
+                svc = IngestionService(
+                    db=db,
+                    vector_store=self._vector_store,
+                    embedding_service=embed_svc,
+                    chunker=chunker,
+                )
+
+                job = await svc.start_ingestion(
+                    source_folder, trigger_reason="reembed"
+                )
+                await db.commit()
+                job_id = job.id
+
+                log.info(
+                    "reembed_job_created",
+                    job_id=job_id,
+                    stored_model=stored_version,
+                    configured_model=configured_model,
+                )
+
+                # Emit reembed_started to any already-connected WS clients
+                reembed_event: dict[str, object] = {
+                    "type": "reembed_started",
+                    "job_id": job_id,
+                    "reason": (
+                        f"Embedding model changed from {stored_version} "
+                        f"to {configured_model}"
+                    ),
+                    "total_files": job.total_files,
+                }
+                broadcast_event(job_id, reembed_event)
+
+                async def _broadcast(event: dict[str, Any]) -> None:
+                    for queue in list(_subscriptions.get(job_id, [])):
+                        await queue.put(event)
+
+                try:
+                    await svc.run_pipeline(job, progress_callback=_broadcast)
+                    log.info("reembed_pipeline_complete", job_id=job_id)
+                except Exception as exc:
+                    log.error(
+                        "reembed_pipeline_failed",
+                        job_id=job_id,
+                        error=str(exc),
+                        exc_info=True,
+                    )
+                finally:
+                    # Signal WS subscribers the pipeline has ended
+                    for queue in list(_subscriptions.get(job_id, [])):
+                        await queue.put({"type": "_done_"})
+                    _subscriptions.pop(job_id, None)
+
+        except Exception as exc:
+            log.error(
+                "reembed_job_create_failed",
+                error=str(exc),
+                exc_info=True,
+            )
+        finally:
+            self.is_reembedding = False
+            log.info("reembed_finished", is_reembedding=self.is_reembedding)
 
     # ------------------------------------------------------------------
     # Shared health status for GET /health

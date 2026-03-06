@@ -79,9 +79,7 @@ describe('useDocuments — initial fetch', () => {
     expect(result.current.documents).toEqual([]);
 
     // resolve to clean up
-    await act(async () => {
-      resolveList(makeListResponse(['d1']));
-    });
+    await act(() => { resolveList(makeListResponse(['d1'])); return Promise.resolve(); });
   });
 
   it('populates documents and total after successful fetch', async () => {
@@ -149,9 +147,7 @@ describe('useDocuments — refresh', () => {
 
     expect(mockListDocuments).toHaveBeenCalledTimes(1);
 
-    await act(async () => {
-      result.current.refresh();
-    });
+    await act(() => { result.current.refresh(); return Promise.resolve(); });
 
     await waitFor(() => expect(mockListDocuments).toHaveBeenCalledTimes(2));
   });

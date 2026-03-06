@@ -174,7 +174,7 @@ describe('useIngestion — startIngestion happy path', () => {
     act(() => { void result.current.startIngestion(); });
     expect(result.current.starting).toBe(true);
 
-    await act(async () => { resolveStart({ job_id: 'job-1', message: '' }); });
+    await act(() => { resolveStart({ job_id: 'job-1', message: '' }); return Promise.resolve(); });
     await waitFor(() => expect(result.current.starting).toBe(false));
   });
 

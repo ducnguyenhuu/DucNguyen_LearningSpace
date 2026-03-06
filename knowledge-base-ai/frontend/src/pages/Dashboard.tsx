@@ -40,6 +40,7 @@ export default function Dashboard() {
   return (
     <div data-testid="dashboard" className="page page--dashboard">
       <h1>Knowledge Base AI</h1>
+      <p className="subtitle">Your local document intelligence hub</p>
 
       {loading && (
         <p data-testid="dashboard-loading" aria-live="polite">
@@ -48,7 +49,7 @@ export default function Dashboard() {
       )}
 
       {!loading && error && (
-        <p data-testid="dashboard-error" role="alert">
+        <p data-testid="dashboard-error" role="alert" className="error-message">
           {error}
         </p>
       )}
@@ -103,13 +104,13 @@ export default function Dashboard() {
           {/* Quick actions */}
           <section className="quick-actions">
             <h2>Quick Actions</h2>
-            <button data-testid="btn-new-chat" onClick={() => navigate('/chat')}>
+            <button className="btn btn--primary" data-testid="btn-new-chat" onClick={() => navigate('/chat')}>
               + New Chat
             </button>
-            <button data-testid="btn-ingest-docs" onClick={() => navigate('/documents')}>
+            <button className="btn btn--secondary" data-testid="btn-ingest-docs" onClick={() => navigate('/documents')}>
               Ingest Docs
             </button>
-            <button data-testid="btn-settings" onClick={() => navigate('/settings')}>
+            <button className="btn btn--secondary" data-testid="btn-settings" onClick={() => navigate('/settings')}>
               Settings
             </button>
           </section>

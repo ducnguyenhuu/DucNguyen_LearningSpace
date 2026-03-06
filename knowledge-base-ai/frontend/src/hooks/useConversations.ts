@@ -115,7 +115,7 @@ export function useConversations(
       }
     }
 
-    fetchConversations();
+    void fetchConversations();
 
     return () => {
       cancelled = true;

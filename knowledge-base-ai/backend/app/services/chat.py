@@ -39,7 +39,7 @@ import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,7 +90,7 @@ class UserMessageSavedEvent:
 class SourcesFoundEvent:
     """Emitted after retrieval — carries compact source citations."""
 
-    sources: list[dict]  # list[SourceReference.to_dict()]
+    sources: list[dict[str, Any]]  # list[SourceReference.to_dict()]
     type: Literal["sources_found"] = field(default="sources_found", init=False)
 
 
@@ -237,7 +237,7 @@ class ChatService:
         db: AsyncSession,
         conversation_id: str,
         content: str,
-    ) -> AsyncIterator[ChatEvent]:  # type: ignore[misc]
+    ) -> AsyncIterator[ChatEvent]:
         try:
             conversation = await self._get_conversation(db, conversation_id)
         except ConversationNotFoundError as exc:
@@ -263,7 +263,7 @@ class ChatService:
 
         tokens: list[str] = []
         try:
-            async for token in await self._llm.stream(prompt=prompt, context=context_text):
+            async for token in self._llm.stream(prompt=prompt, context=context_text):
                 tokens.append(token)
                 yield TokenEvent(content=token)
         except ModelUnavailableError as exc:

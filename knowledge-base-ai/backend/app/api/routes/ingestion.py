@@ -5,13 +5,12 @@ Route contracts: api-contracts.md
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
-from typing import Optional
+from datetime import datetime
+from typing import Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import DbSession, EmbProvider, VStore
 from app.config import settings
@@ -30,7 +29,18 @@ log = get_logger(__name__)
 # WebSocket subscription registry
 # job_id → list of per-client queues.  Pure asyncio — no lock needed.
 # ---------------------------------------------------------------------------
-_subscriptions: dict[str, list[asyncio.Queue[dict]]] = {}
+_subscriptions: dict[str, list[asyncio.Queue[dict[str, Any]]]] = {}
+
+
+def broadcast_event(job_id: str, event: dict[str, Any]) -> None:
+    """Push *event* to every WS queue currently subscribed to *job_id*.
+
+    Fire-and-forget: uses ``put_nowait`` so it is safe to call from sync or
+    async contexts.  Called by :class:`~app.services.model_manager.ModelManager`
+    to emit ``reembed_started`` events at startup (FR-021).
+    """
+    for queue in list(_subscriptions.get(job_id, [])):
+        queue.put_nowait(event)
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +99,7 @@ async def _run_pipeline_in_background(job_id: str) -> None:
     from app.api.deps import get_singleton_embedding_provider, get_singleton_vector_store
     from app.db.database import get_session
 
-    async def _broadcast(event: dict) -> None:
+    async def _broadcast(event: dict[str, Any]) -> None:
         """Push *event* to every WS queue subscribed to this job."""
         for queue in list(_subscriptions.get(job_id, [])):
             await queue.put(event)
@@ -231,7 +241,7 @@ async def get_ingestion_status(
 _WS_KEEPALIVE_TIMEOUT = 30  # seconds before sending a keepalive ping
 
 
-def _normalize_event(event: dict) -> dict:
+def _normalize_event(event: dict[str, Any]) -> dict[str, Any]:
     """Translate internal service event field names to api-contracts.md §1.3 names.
 
     The IngestionService emits abbreviated keys (``processed``, ``total``,
@@ -254,7 +264,7 @@ def _normalize_event(event: dict) -> dict:
     return out
 
 
-def _terminal_event_from_job(job: IngestionJob) -> dict:
+def _terminal_event_from_job(job: IngestionJob) -> dict[str, Any]:
     """Build a §1.3 'completed' or 'failed' event from a DB job row."""
     duration = None
     if job.completed_at and job.started_at:
@@ -316,7 +326,7 @@ async def ingestion_progress_ws(
         return
 
     # ---- Subscribe to live events from the running background task ----------
-    queue: asyncio.Queue[dict] = asyncio.Queue()
+    queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
     _subscriptions.setdefault(job_id, []).append(queue)
 
     log.info("ws_progress_subscribed", job_id=job_id)

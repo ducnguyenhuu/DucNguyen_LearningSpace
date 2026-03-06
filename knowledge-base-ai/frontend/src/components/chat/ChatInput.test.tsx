@@ -24,8 +24,8 @@ import { ChatInput } from './ChatInput';
 function setup(props: Partial<React.ComponentProps<typeof ChatInput>> = {}) {
   const onSend = vi.fn();
   const utils = render(<ChatInput onSend={onSend} {...props} />);
-  const textarea = screen.getByTestId('chat-input-textarea') as HTMLTextAreaElement;
-  const sendBtn = screen.getByTestId('chat-input-send') as HTMLButtonElement;
+  const textarea = screen.getByTestId<HTMLTextAreaElement>('chat-input-textarea');
+  const sendBtn = screen.getByTestId<HTMLButtonElement>('chat-input-send');
   return { onSend, textarea, sendBtn, ...utils };
 }
 
@@ -119,7 +119,7 @@ describe('ChatInput — disabled state', () => {
     expect(sendBtn).not.toBeDisabled();
   });
 
-  it('does NOT call onSend when disabled even via Enter', async () => {
+  it('does NOT call onSend when disabled even via Enter', () => {
     const { onSend, textarea } = setup({ disabled: true });
     // Type via fireEvent to bypass disabled check
     fireEvent.change(textarea, { target: { value: 'Hi' } });

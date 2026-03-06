@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import func, select
 
 from app.api.deps import DbSession, VStore
@@ -204,7 +204,7 @@ async def delete_document(
     await vector_store.delete_by_document_id(document_id)
 
     # Remove the DB row (cascades to DocumentSummary via FK ondelete=CASCADE)
-    db.delete(doc)
+    await db.delete(doc)
     await db.commit()
 
     log.info(

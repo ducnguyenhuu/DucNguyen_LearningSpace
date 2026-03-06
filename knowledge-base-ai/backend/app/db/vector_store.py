@@ -208,12 +208,12 @@ class VectorStore:
             return results
 
         for i, chunk_id in enumerate(raw["ids"][0]):
-            distance = float(raw["distances"][0][i])  # type: ignore[index]
+            distance = float(raw["distances"][0][i])
             similarity = 1.0 - distance
             if similarity < threshold:
                 continue
-            meta: dict[str, Any] = raw["metadatas"][0][i]  # type: ignore[index]
-            text: str = raw["documents"][0][i]  # type: ignore[index]
+            meta: dict[str, Any] = raw["metadatas"][0][i]
+            text: str = raw["documents"][0][i]
             results.append(
                 ChunkResult(
                     chunk_id=chunk_id,
@@ -245,16 +245,61 @@ class VectorStore:
                 return None
             peeked = col.peek(limit=1)
             metas = peeked.get("metadatas")
-            if metas and metas[0]:
-                return str(metas[0][0].get("model_version", ""))
+            if metas:
+                # peek() returns metadatas as list[dict], not list[list[dict]]
+                first = metas[0]
+                if isinstance(first, dict):
+                    return str(first.get("model_version", ""))
+                if isinstance(first, list) and first:
+                    return str(first[0].get("model_version", ""))
             return None
 
         return await asyncio.get_event_loop().run_in_executor(None, _peek)
+
+    async def get_chunks_by_document_id(self, document_id: str) -> list[ChunkResult]:
+        """Return all chunks for *document_id* ordered by chunk_index.
+
+        Uses ChromaDB ``get()`` (filter by metadata) rather than ``query()``
+        (semantic search) to retrieve every stored chunk for a document.
+        """
+
+        def _get() -> list[ChunkResult]:
+            col = self._ensure_connected()
+            raw = col.get(
+                where={"document_id": document_id},
+                include=["documents", "metadatas"],
+            )
+            ids: list[str] = raw.get("ids") or []
+            docs: list[str] = raw.get("documents") or []
+            metas: list[dict[str, Any]] = raw.get("metadatas") or []
+
+            results: list[ChunkResult] = []
+            for i, chunk_id in enumerate(ids):
+                meta: dict[str, Any] = metas[i] if i < len(metas) else {}
+                text: str = docs[i] if i < len(docs) else ""
+                results.append(
+                    ChunkResult(
+                        chunk_id=chunk_id,
+                        document_id=str(meta.get("document_id", "")),
+                        file_name=str(meta.get("file_name", "")),
+                        file_path=str(meta.get("file_path", "")),
+                        text=text,
+                        chunk_index=int(meta.get("chunk_index", 0)),
+                        total_chunks=int(meta.get("total_chunks", 1)),
+                        page_number=int(meta["page_number"]) if meta.get("page_number") else None,
+                        model_version=str(meta.get("model_version", "")),
+                        distance=0.0,
+                    )
+                )
+            results.sort(key=lambda c: c.chunk_index)
+            return results
+
+        return await asyncio.get_event_loop().run_in_executor(None, _get)
 
     async def count(self) -> int:
         """Return the total number of vectors in the collection."""
 
         def _count() -> int:
-            return self._ensure_connected().count()
+            return int(self._ensure_connected().count())
 
         return await asyncio.get_event_loop().run_in_executor(None, _count)

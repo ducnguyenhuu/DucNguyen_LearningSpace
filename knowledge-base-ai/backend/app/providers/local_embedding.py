@@ -9,6 +9,7 @@ The model files are downloaded to ``~/.cache/huggingface/hub/`` on first run
 from __future__ import annotations
 
 import asyncio
+from typing import cast
 
 from app.config import settings
 from app.core.exceptions import ModelUnavailableError
@@ -45,7 +46,7 @@ class LocalEmbeddingProvider(EmbeddingProvider):
             return self._model
 
         try:
-            from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
+            from sentence_transformers import SentenceTransformer  # noqa: PLC0415
         except ImportError as exc:
             raise ModelUnavailableError(
                 model=self._model_name,
@@ -84,7 +85,7 @@ class LocalEmbeddingProvider(EmbeddingProvider):
                 normalize_embeddings=True,
                 show_progress_bar=False,
             )
-            return embedding.tolist()  # type: ignore[union-attr]
+            return cast(list[float], embedding.tolist())
 
         return await asyncio.get_event_loop().run_in_executor(None, _run)
 

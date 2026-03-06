@@ -139,10 +139,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T059 [US4] Implement summary service in `backend/app/services/summary.py` — retrieve all chunks for a document from ChromaDB ordered by chunk_index, iterative summarization (batch chunks → LLM summarize → combine, FR-017), extract section_references mapping key points to source sections/pages (FR-018), store/update DocumentSummary record, return cached summary if exists and document unchanged
-- [ ] T060 [US4] Implement summary routes in `backend/app/api/routes/summary.py` — POST /documents/{id}/summary (generate/regenerate per §4.1, errors 404/409/503), GET /documents/{id}/summary (cached per §4.2, error 404)
-- [ ] T061 [P] [US4] Create SummaryView component in `frontend/src/components/documents/SummaryView.tsx` — display summary text with section references, loading state during generation, "Regenerate" button
-- [ ] T062 [US4] Create DocumentDetail page in `frontend/src/pages/DocumentDetail.tsx` — document metadata (name, type, size, chunks, ingested_at), SummaryView component, "Generate Summary" / "View Summary" button based on has_summary flag
+- [X] T059 [US4] Implement summary service in `backend/app/services/summary.py` — retrieve all chunks for a document from ChromaDB ordered by chunk_index, iterative summarization (batch chunks → LLM summarize → combine, FR-017), extract section_references mapping key points to source sections/pages (FR-018), store/update DocumentSummary record, return cached summary if exists and document unchanged
+- [X] T060 [US4] Implement summary routes in `backend/app/api/routes/summary.py` — POST /documents/{id}/summary (generate/regenerate per §4.1, errors 404/409/503), GET /documents/{id}/summary (cached per §4.2, error 404)
+- [X] T061 [P] [US4] Create SummaryView component in `frontend/src/components/documents/SummaryView.tsx` — display summary text with section references, loading state during generation, "Regenerate" button
+- [X] T062 [US4] Create DocumentDetail page in `frontend/src/pages/DocumentDetail.tsx` — document metadata (name, type, size, chunks, ingested_at), SummaryView component, "Generate Summary" / "View Summary" button based on has_summary flag
 
 **Checkpoint**: User Stories 1 through 4 functional — complete document management with ingestion, Q&A, history, and summarization.
 
@@ -156,9 +156,9 @@
 
 ### Implementation for User Story 5
 
-- [ ] T063 [P] [US5] Create OpenAI embedding adapter stub in `backend/app/providers/openai_embedding.py` — implement EmbeddingProvider ABC, raise `NotImplementedError("OpenAI adapter not yet configured — set OPENAI_API_KEY")` with clear setup instructions in each method
-- [ ] T064 [P] [US5] Create Claude LLM adapter stub in `backend/app/providers/claude_llm.py` — implement LLMProvider ABC, raise `NotImplementedError("Claude adapter not yet configured — set CLAUDE_API_KEY")` with clear setup instructions in each method
-- [ ] T065 [US5] Register stub adapters in provider factory in `backend/app/providers/factory.py` — add `openai` and `claude` to factory mappings, verify switching EMBEDDING_PROVIDER=openai or LLM_PROVIDER=claude in config instantiates the correct adapter class
+- [X] T063 [P] [US5] Create OpenAI embedding adapter stub in `backend/app/providers/openai_embedding.py` — implement EmbeddingProvider ABC, raise `NotImplementedError("OpenAI adapter not yet configured — set OPENAI_API_KEY")` with clear setup instructions in each method
+- [X] T064 [P] [US5] Create Claude LLM adapter stub in `backend/app/providers/claude_llm.py` — implement LLMProvider ABC, raise `NotImplementedError("Claude adapter not yet configured — set CLAUDE_API_KEY")` with clear setup instructions in each method
+- [X] T065 [US5] Register stub adapters in provider factory in `backend/app/providers/factory.py` — add `openai` and `claude` to factory mappings, verify switching EMBEDDING_PROVIDER=openai or LLM_PROVIDER=claude in config instantiates the correct adapter class
 
 **Checkpoint**: All 5 user stories functional. Provider abstraction verified — adding a real commercial adapter requires only implementing the ABC interface + one factory mapping.
 
@@ -168,14 +168,14 @@
 
 **Purpose**: Startup behaviors, deployment, documentation, and UI refinements
 
-- [ ] T066 Implement startup model version check and auto re-embed trigger in `backend/app/services/model_manager.py` — on app startup (lifespan), compare configured EMBEDDING_MODEL against model_version in existing ChromaDB vectors, if mismatch: create IngestionJob with trigger_reason='reembed', call ingestion service in background task, emit reembed_started WS message (FR-021), update /health reembedding field
-- [ ] T067 [P] Add re-embedding notification banner to frontend — detect reembedding.in_progress from GET /health polling, show persistent info banner "Re-embedding documents due to model update..." with progress link to ingestion page per frontend-contract.md §6
-- [ ] T068 [P] Create `Dockerfile.backend` (Python 3.11 slim, pip install, uvicorn + gunicorn) and `Dockerfile.frontend` (Node 18, npm build, nginx serve)
-- [ ] T069 [P] Create `docker-compose.yml` — services: backend (FastAPI), frontend (Nginx), ollama (GPU-optional); production profile adds PostgreSQL; shared volumes for chromadb data and model cache per quickstart.md §7
-- [ ] T070 [P] Create `README.md` — project overview, features, tech stack, setup instructions (reference quickstart.md), architecture diagram, development commands, Docker deployment
-- [ ] T071 Implement responsive layout across all pages — desktop ≥1024px (3-column), tablet 768-1023px (sidebar collapses to icons), mobile <768px (tab-based navigation) per frontend-contract.md §5
-- [ ] T072 Add React Error Boundaries on all route-level components in `frontend/src/App.tsx` — catch unhandled exceptions, render fallback UI with "Report Issue" option, log error with request_id context per frontend-contract.md §6
-- [ ] T073 Run quickstart.md end-to-end validation — follow setup steps from quickstart.md §1-4, verify backend starts on 127.0.0.1:8000, frontend on 5173, ingestion works, chat works, summary works, all quality gates pass (mypy, ruff, tsc, eslint). Validate SC-001 through SC-009 with a benchmark corpus of 10 documents containing known facts + 10 out-of-scope queries to verify answer accuracy (SC-003), rejection accuracy (SC-004), and performance targets (SC-001, SC-002, SC-009)
+- [X] T066 Implement startup model version check and auto re-embed trigger in `backend/app/services/model_manager.py` — on app startup (lifespan), compare configured EMBEDDING_MODEL against model_version in existing ChromaDB vectors, if mismatch: create IngestionJob with trigger_reason='reembed', call ingestion service in background task, emit reembed_started WS message (FR-021), update /health reembedding field
+- [X] T067 [P] Add re-embedding notification banner to frontend — detect reembedding.in_progress from GET /health polling, show persistent info banner "Re-embedding documents due to model update..." with progress link to ingestion page per frontend-contract.md §6
+- [X] T068 [P] Create `Dockerfile.backend` (Python 3.11 slim, pip install, uvicorn + gunicorn) and `Dockerfile.frontend` (Node 18, npm build, nginx serve)
+- [X] T069 [P] Create `docker-compose.yml` — services: backend (FastAPI), frontend (Nginx), ollama (GPU-optional); production profile adds PostgreSQL; shared volumes for chromadb data and model cache per quickstart.md §7
+- [X] T070 [P] Create `README.md` — project overview, features, tech stack, setup instructions (reference quickstart.md), architecture diagram, development commands, Docker deployment
+- [X] T071 Implement responsive layout across all pages — desktop ≥1024px (3-column), tablet 768-1023px (sidebar collapses to icons), mobile <768px (tab-based navigation) per frontend-contract.md §5
+- [X] T072 Add React Error Boundaries on all route-level components in `frontend/src/App.tsx` — catch unhandled exceptions, render fallback UI with "Report Issue" option, log error with request_id context per frontend-contract.md §6
+- [X] T073 Run quickstart.md end-to-end validation — follow setup steps from quickstart.md §1-4, verify backend starts on 127.0.0.1:8000, frontend on 5173, ingestion works, chat works, summary works, all quality gates pass (mypy, ruff, tsc, eslint). Validate SC-001 through SC-009 with a benchmark corpus of 10 documents containing known facts + 10 out-of-scope queries to verify answer accuracy (SC-003), rejection accuracy (SC-004), and performance targets (SC-001, SC-002, SC-009)
 
 ---
 
@@ -188,11 +188,11 @@
 - [X] T074 [P] Create test configuration and fixtures in `backend/tests/conftest.py` — in-memory SQLite test DB, mock ChromaDB collection, mock EmbeddingProvider and LLMProvider, sample document fixtures (PDF, DOCX, MD), temp directory with test files
 - [X] T075 [P] Write parser unit tests in `backend/tests/unit/test_parsers.py` — test PDF extraction (multi-page, corrupted), DOCX extraction (headings, empty), MD extraction (headings, malformed), Excel extraction (multi-sheet, empty sheet, password-protected), verify ParsedDocument output structure
 - [X] T076 [P] Write chunker unit tests in `backend/tests/unit/test_chunker.py` — test chunk size/overlap config, boundary preservation, force-split at 1.5× threshold, empty input, single-paragraph input, position metadata
-- [ ] T077 [P] Write provider unit tests in `backend/tests/unit/test_providers.py` — test LocalEmbeddingProvider embed/embed_batch (mock model), LocalLLMProvider generate/stream (mock Ollama HTTP), factory instantiation for all registered providers, unknown provider error
-- [ ] T078 [P] Write service unit tests in `backend/tests/unit/test_services.py` — test ingestion service (new/modified/deleted detection, crash recovery, single-job enforcement, path validation, unsupported file skip), chat service (RAG prompt construction, sliding window, no-results handling), retrieval service (threshold filtering), summary service (iterative summarization, caching), embedding service (model_version tagging)
-- [ ] T079 Write ingestion integration test in `backend/tests/integration/test_ingestion.py` — end-to-end: create temp folder with sample files → call ingestion service → verify Documents in DB + chunks in ChromaDB → add/modify/delete files → re-ingest → verify incremental behavior
-- [ ] T080 Write chat integration test in `backend/tests/integration/test_chat.py` — end-to-end RAG pipeline: ingest sample docs → create conversation → send question → verify answer contains source references → verify conversation + messages persisted in DB
-- [ ] T081 Write API integration tests in `backend/tests/integration/test_api.py` — test all REST endpoints via FastAPI TestClient: ingestion start/status, document CRUD, conversation CRUD + bulk delete, chat message, summary generate/get, health, config; verify error response format matches api-contracts.md §6
+- [x] T077 [P] Write provider unit tests in `backend/tests/unit/test_providers.py` — test LocalEmbeddingProvider embed/embed_batch (mock model), LocalLLMProvider generate/stream (mock Ollama HTTP), factory instantiation for all registered providers, unknown provider error
+- [x] T078 [P] Write service unit tests in `backend/tests/unit/test_services.py` — test ingestion service (new/modified/deleted detection, crash recovery, single-job enforcement, path validation, unsupported file skip), chat service (RAG prompt construction, sliding window, no-results handling), retrieval service (threshold filtering), summary service (iterative summarization, caching), embedding service (model_version tagging)
+- [x] T079 Write ingestion integration test in `backend/tests/integration/test_ingestion.py` — end-to-end: create temp folder with sample files → call ingestion service → verify Documents in DB + chunks in ChromaDB → add/modify/delete files → re-ingest → verify incremental behavior
+- [x] T080 Write chat integration test in `backend/tests/integration/test_chat.py` — end-to-end RAG pipeline: ingest sample docs → create conversation → send question → verify answer contains source references → verify conversation + messages persisted in DB
+- [x] T081 Write API integration tests in `backend/tests/integration/test_api.py` — test all REST endpoints via FastAPI TestClient: ingestion start/status, document CRUD, conversation CRUD + bulk delete, chat message, summary generate/get, health, config; verify error response format matches api-contracts.md §6
 
 ---
 

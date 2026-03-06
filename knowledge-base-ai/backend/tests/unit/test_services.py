@@ -433,7 +433,7 @@ def _make_ingestion_service(
     db.flush = AsyncMock()
     db.commit = AsyncMock()
     db.add = MagicMock()
-    db.delete = MagicMock()
+    db.delete = AsyncMock()
 
     vector_store = MagicMock()
     vector_store.delete_by_document_id = AsyncMock()
@@ -539,7 +539,7 @@ class TestIngestionPipelineFileDetection:
         db.flush = AsyncMock()
         db.commit = AsyncMock()
         db.add = MagicMock()
-        db.delete = MagicMock()
+        db.delete = AsyncMock()
 
         vector_store = MagicMock()
         vector_store.delete_by_document_id = AsyncMock()
@@ -607,7 +607,7 @@ class TestIngestionPipelineFileDetection:
         db.flush = AsyncMock()
         db.commit = AsyncMock()
         db.add = MagicMock()
-        db.delete = MagicMock()
+        db.delete = AsyncMock()
 
         vector_store = MagicMock()
         vector_store.delete_by_document_id = AsyncMock()
@@ -669,7 +669,7 @@ class TestIngestionPipelineFileDetection:
         db.flush = AsyncMock()
         db.commit = AsyncMock()
         db.add = MagicMock()
-        db.delete = MagicMock()
+        db.delete = AsyncMock()
 
         vector_store = MagicMock()
         vector_store.delete_by_document_id = AsyncMock()
@@ -733,7 +733,7 @@ class TestIngestionPipelineFileDetection:
         db.flush = AsyncMock()
         db.commit = AsyncMock()
         db.add = MagicMock()
-        db.delete = MagicMock()
+        db.delete = AsyncMock()
 
         vector_store = MagicMock()
         vector_store.delete_by_document_id = AsyncMock()
@@ -1088,3 +1088,535 @@ class TestRetrievalService:
         assert ref.file_name == "spec.pdf"
         assert ref.page_number == 4
         assert ref.relevance_score > 0.9
+
+# ===========================================================================
+# T078 — ChatService unit tests
+# ===========================================================================
+
+from app.core.exceptions import ConversationNotFoundError
+from app.models.conversation import Conversation
+from app.models.message import Message
+from app.services.chat import (
+    ChatService,
+    _build_context_text,
+    _build_prompt,
+    _build_source_references,
+    _NO_CONTEXT_NOTE,
+)
+from app.services.retrieval import RetrievalResult, SourceReference
+
+
+def _make_retrieval_result(
+    chunk_id: str = "c1",
+    document_id: str = "doc-1",
+    file_name: str = "arch.pdf",
+    text: str = "Architecture overview.",
+    page_number: int | None = 1,
+    relevance_score: float = 0.9,
+) -> RetrievalResult:
+    return RetrievalResult(
+        chunk_id=chunk_id,
+        document_id=document_id,
+        file_name=file_name,
+        file_path="/docs/arch.pdf",
+        text=text,
+        chunk_index=0,
+        total_chunks=3,
+        page_number=page_number,
+        relevance_score=relevance_score,
+        model_version="nomic-v1",
+    )
+
+
+class TestBuildContextText:
+    """Tests for the module-level _build_context_text helper."""
+
+    def test_empty_results_returns_no_context_note(self) -> None:
+        assert _build_context_text([]) == _NO_CONTEXT_NOTE
+
+    def test_single_result_formats_correctly(self) -> None:
+        r = _make_retrieval_result(file_name="spec.pdf", text="Spec content.", page_number=2)
+        output = _build_context_text([r])
+        assert "[Source: spec.pdf, page 2]" in output
+        assert "Spec content." in output
+
+    def test_multiple_results_separated(self) -> None:
+        r1 = _make_retrieval_result(chunk_id="c1", text="First.")
+        r2 = _make_retrieval_result(chunk_id="c2", text="Second.")
+        output = _build_context_text([r1, r2])
+        assert "First." in output
+        assert "Second." in output
+
+    def test_no_page_number_omits_page(self) -> None:
+        r = _make_retrieval_result(file_name="notes.md", page_number=None)
+        output = _build_context_text([r])
+        assert "[Source: notes.md]" in output
+
+
+class TestBuildPrompt:
+    """Tests for the module-level _build_prompt helper."""
+
+    def test_contains_user_question(self) -> None:
+        p = _build_prompt("What is RAG?", "")
+        assert "What is RAG?" in p
+
+    def test_with_history_includes_history(self) -> None:
+        p = _build_prompt("Q", "User: hi\nAssistant: hello")
+        assert "User: hi" in p
+        assert "Assistant: hello" in p
+
+    def test_without_history_excludes_history_heading(self) -> None:
+        p = _build_prompt("Q", "")
+        assert "history" not in p.lower()
+
+    def test_contains_system_prompt(self) -> None:
+        p = _build_prompt("Q", "")
+        assert len(p) > len("Q")
+
+
+class TestBuildSourceReferences:
+    """Tests for the module-level _build_source_references helper."""
+
+    def test_empty_results_returns_empty(self) -> None:
+        assert _build_source_references([]) == []
+
+    def test_deduplicates_same_doc_same_page(self) -> None:
+        r1 = _make_retrieval_result(chunk_id="c1", document_id="d1", page_number=1, relevance_score=0.8)
+        r2 = _make_retrieval_result(chunk_id="c2", document_id="d1", page_number=1, relevance_score=0.85)
+        refs = _build_source_references([r1, r2])
+        assert len(refs) == 1
+        # Keeps the higher score
+        assert refs[0].relevance_score == pytest.approx(0.85)
+
+    def test_different_pages_both_included(self) -> None:
+        r1 = _make_retrieval_result(chunk_id="c1", document_id="d1", page_number=1)
+        r2 = _make_retrieval_result(chunk_id="c2", document_id="d1", page_number=2)
+        refs = _build_source_references([r1, r2])
+        assert len(refs) == 2
+
+    def test_sorted_by_descending_score(self) -> None:
+        r1 = _make_retrieval_result(chunk_id="c1", relevance_score=0.7, page_number=1)
+        r2 = _make_retrieval_result(chunk_id="c2", relevance_score=0.95, page_number=2)
+        refs = _build_source_references([r1, r2])
+        assert refs[0].relevance_score > refs[1].relevance_score
+
+
+class TestChatService:
+    """Tests for ChatService using mocked DB + LLM provider."""
+
+    def _make_conversation(self, cid: str = "conv-1") -> Conversation:
+        from datetime import UTC, datetime
+        c = Conversation()
+        c.id = cid
+        c.title = None
+        c.preview = None
+        c.message_count = 0
+        c.created_at = datetime.now(UTC)
+        c.updated_at = datetime.now(UTC)
+        return c
+
+    def _make_chat_service(
+        self,
+        retrieval_results: list[RetrievalResult] | None = None,
+        llm_response: str = "LLM reply",
+    ) -> ChatService:
+        retrieval_svc = MagicMock()
+        retrieval_svc.retrieve = AsyncMock(return_value=retrieval_results or [])
+
+        llm = MagicMock()
+        llm.generate = AsyncMock(return_value=llm_response)
+
+        return ChatService(retrieval_service=retrieval_svc, llm_provider=llm)
+
+    def _make_db(self, conversation: Conversation | None = None) -> AsyncMock:
+        db = AsyncMock()
+        # Scalar results for DB queries
+        conv_result = MagicMock()
+        conv_result.scalar_one_or_none.return_value = conversation
+        # Messages history
+        msg_result = MagicMock()
+        msg_result.scalars.return_value.all.return_value = []
+        db.execute = AsyncMock(side_effect=[conv_result, msg_result])
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.commit = AsyncMock()
+        return db
+
+    async def test_send_message_raises_conversation_not_found(self) -> None:
+        svc = self._make_chat_service()
+        db = self._make_db(conversation=None)
+        with pytest.raises(ConversationNotFoundError):
+            await svc.send_message(db, "missing-id", "hello")
+
+    async def test_send_message_returns_message_pair(self) -> None:
+        conv = self._make_conversation()
+        svc = self._make_chat_service(llm_response="4")
+        db = self._make_db(conversation=conv)
+        user_msg, asst_msg = await svc.send_message(db, conv.id, "What is 2+2?")
+        assert user_msg.role == "user"
+        assert asst_msg.role == "assistant"
+        assert asst_msg.content == "4"
+
+    async def test_send_message_persists_both_messages(self) -> None:
+        conv = self._make_conversation()
+        svc = self._make_chat_service()
+        db = self._make_db(conversation=conv)
+        await svc.send_message(db, conv.id, "Q?")
+        # db.add should be called at least twice (user msg + assistant msg)
+        assert db.add.call_count >= 2
+
+    async def test_send_message_calls_llm(self) -> None:
+        conv = self._make_conversation()
+        retrieval_svc = MagicMock()
+        retrieval_svc.retrieve = AsyncMock(return_value=[])
+        llm = MagicMock()
+        llm.generate = AsyncMock(return_value="answer")
+        svc = ChatService(retrieval_service=retrieval_svc, llm_provider=llm)
+        db = self._make_db(conversation=conv)
+        await svc.send_message(db, conv.id, "Q?")
+        llm.generate.assert_called_once()
+
+    async def test_send_message_no_results_falls_back_to_no_context(self) -> None:
+        """When retrieval returns nothing, context note is passed to LLM."""
+        conv = self._make_conversation()
+        retrieval_svc = MagicMock()
+        retrieval_svc.retrieve = AsyncMock(return_value=[])
+        llm = MagicMock()
+        llm.generate = AsyncMock(return_value="no info")
+        svc = ChatService(retrieval_service=retrieval_svc, llm_provider=llm)
+        db = self._make_db(conversation=conv)
+        await svc.send_message(db, conv.id, "Where is Atlantis?")
+        # The context passed to LLM should contain the no-context note
+        call_kwargs = llm.generate.call_args
+        context_arg = call_kwargs.kwargs.get("context", call_kwargs.args[1] if len(call_kwargs.args) > 1 else "")
+        assert _NO_CONTEXT_NOTE in context_arg
+
+    async def test_send_message_source_refs_stored(self) -> None:
+        """If retrieval returns results, assistant message has source refs."""
+        conv = self._make_conversation()
+        retrieval_result = _make_retrieval_result(document_id="doc-42", page_number=3, relevance_score=0.95)
+        svc = self._make_chat_service(retrieval_results=[retrieval_result])
+        db = self._make_db(conversation=conv)
+        _, asst_msg = await svc.send_message(db, conv.id, "What?")
+        assert asst_msg.source_references is not None
+        assert len(asst_msg.source_references) == 1
+        assert asst_msg.source_references[0]["document_id"] == "doc-42"
+
+    async def test_build_history_text_formats_messages(self) -> None:
+        """_build_history_text returns formatted conversation lines."""
+        from datetime import UTC, datetime
+
+        conv = self._make_conversation()
+        svc = self._make_chat_service()
+
+        # Build a db mock that returns 2 messages
+        user_msg = Message()
+        user_msg.id = "m1"
+        user_msg.role = "user"
+        user_msg.content = "Hello"
+        user_msg.created_at = datetime.now(UTC)
+        user_msg.conversation_id = conv.id
+        user_msg.source_references = None
+
+        asst_msg = Message()
+        asst_msg.id = "m2"
+        asst_msg.role = "assistant"
+        asst_msg.content = "Hi there"
+        asst_msg.created_at = datetime.now(UTC)
+        asst_msg.conversation_id = conv.id
+        asst_msg.source_references = None
+
+        db = AsyncMock()
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = [user_msg, asst_msg]
+        db.execute = AsyncMock(return_value=result_mock)
+
+        history = await svc._build_history_text(db, conv.id)
+
+        assert "User: Hello" in history
+        assert "Assistant: Hi there" in history
+
+    async def test_build_history_text_empty_returns_empty_string(self) -> None:
+        svc = self._make_chat_service()
+        db = AsyncMock()
+        result_mock = MagicMock()
+        result_mock.scalars.return_value.all.return_value = []
+        db.execute = AsyncMock(return_value=result_mock)
+
+        history = await svc._build_history_text(db, "conv-x")
+        assert history == ""
+
+    async def test_stream_message_yields_correct_event_types(self) -> None:
+        """stream_message must yield UserMessageSaved, SourcesFound, Token(s), Complete."""
+        from app.services.chat import (
+            CompleteEvent,
+            SourcesFoundEvent,
+            TokenEvent,
+            UserMessageSavedEvent,
+        )
+
+        conv = self._make_conversation()
+
+        async def _fake_stream(prompt: str, context: str = "") -> Any:
+            async def _gen() -> Any:
+                yield "Hello"
+                yield " world"
+            return _gen()
+
+        retrieval_svc = MagicMock()
+        retrieval_svc.retrieve = AsyncMock(return_value=[])
+        llm = MagicMock()
+        llm.stream = _fake_stream
+
+        svc = ChatService(retrieval_service=retrieval_svc, llm_provider=llm)
+
+        db = AsyncMock()
+        # First execute: load conversation; subsequent: message history
+        conv_result = MagicMock()
+        conv_result.scalar_one_or_none.return_value = conv
+        msg_result = MagicMock()
+        msg_result.scalars.return_value.all.return_value = []
+        db.execute = AsyncMock(side_effect=[conv_result, msg_result])
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.commit = AsyncMock()
+
+        events = []
+        async for event in await svc.stream_message(db, conv.id, "Q?"):
+            events.append(event)
+
+        event_types = [type(e) for e in events]
+        assert UserMessageSavedEvent in event_types
+        assert SourcesFoundEvent in event_types
+        assert TokenEvent in event_types
+        assert CompleteEvent in event_types
+
+
+# ===========================================================================
+# T078 — SummaryService unit tests
+# ===========================================================================
+
+from app.db.vector_store import ChunkResult
+from app.models.document import Document
+from app.models.document_summary import DocumentSummary
+from app.services.summary import SummaryGenerationError, SummaryService
+
+
+def _make_chunk(
+    chunk_id: str = "c1",
+    document_id: str = "doc-1",
+    text: str = "Chunk text.",
+    chunk_index: int = 0,
+    page_number: int | None = 1,
+) -> ChunkResult:
+    return ChunkResult(
+        chunk_id=chunk_id,
+        document_id=document_id,
+        file_name="doc.pdf",
+        file_path="/docs/doc.pdf",
+        text=text,
+        chunk_index=chunk_index,
+        total_chunks=3,
+        page_number=page_number,
+        model_version="test-model",
+        distance=0.1,
+    )
+
+
+def _make_document(doc_id: str = "doc-1") -> Document:
+    from datetime import UTC, datetime
+    d = Document(
+        file_path=f"/docs/{doc_id}.pdf",
+        file_name=f"{doc_id}.pdf",
+        file_type="pdf",
+        file_hash="abc123",
+        file_size_bytes=1024,
+        status="completed",
+    )
+    d.id = doc_id
+    d.ingested_at = datetime.now(UTC)
+    return d
+
+
+def _make_summary_service(
+    chunks: list[ChunkResult] | None = None,
+    llm_response: str = "Summary text.",
+) -> SummaryService:
+    vector_store = MagicMock()
+    vector_store.get_chunks_by_document_id = AsyncMock(return_value=chunks or [])
+
+    llm = MagicMock()
+    llm.generate = AsyncMock(return_value=llm_response)
+
+    return SummaryService(vector_store=vector_store, llm_provider=llm, llm_model="test-llm")
+
+
+class TestSummaryService:
+    """Tests for SummaryService — uses mocked vector store and LLM provider."""
+
+    def _make_db(self, existing_summary: DocumentSummary | None = None) -> AsyncMock:
+        db = AsyncMock()
+        result = MagicMock()
+        result.scalars.return_value.first.return_value = existing_summary
+        db.execute = AsyncMock(return_value=result)
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+        return db
+
+    async def test_get_cached_returns_none_when_missing(self) -> None:
+        svc = _make_summary_service()
+        db = self._make_db(existing_summary=None)
+        result = await svc.get_cached(db, "doc-99")
+        assert result is None
+
+    async def test_get_cached_returns_existing_summary(self) -> None:
+        from datetime import UTC, datetime
+        summary = DocumentSummary(
+            document_id="doc-1",
+            summary_text="Cached summary.",
+            model_version="v1",
+            created_at=datetime.now(UTC),
+        )
+        svc = _make_summary_service()
+        db = self._make_db(existing_summary=summary)
+        result = await svc.get_cached(db, "doc-1")
+        assert result is summary
+
+    async def test_get_or_generate_returns_cache_when_present(self) -> None:
+        """get_or_generate(regenerate=False) should return cached summary without calling LLM."""
+        from datetime import UTC, datetime
+        existing = DocumentSummary(
+            document_id="doc-1",
+            summary_text="Cached.",
+            model_version="v1",
+            created_at=datetime.now(UTC),
+        )
+        vector_store = MagicMock()
+        llm = MagicMock()
+        llm.generate = AsyncMock()
+        svc = SummaryService(vector_store=vector_store, llm_provider=llm, llm_model="m")
+
+        db = AsyncMock()
+        cache_result = MagicMock()
+        cache_result.scalars.return_value.first.return_value = existing
+        db.execute = AsyncMock(return_value=cache_result)
+
+        doc = _make_document("doc-1")
+        result = await svc.get_or_generate(db, doc, regenerate=False)
+
+        assert result is existing
+        llm.generate.assert_not_called()
+
+    async def test_get_or_generate_calls_llm_when_no_cache(self) -> None:
+        doc = _make_document("doc-2")
+        chunks = [_make_chunk(document_id="doc-2", text="Content text.")]
+        svc = _make_summary_service(chunks=chunks, llm_response="Generated summary.")
+        db = self._make_db(existing_summary=None)
+        result = await svc.get_or_generate(db, doc)
+        assert result is not None
+
+    async def test_get_or_generate_regenerate_bypasses_cache(self) -> None:
+        """regenerate=True should call LLM even when a cached summary exists."""
+        from datetime import UTC, datetime
+        existing = DocumentSummary(
+            document_id="doc-3",
+            summary_text="Old summary.",
+            model_version="v0",
+            created_at=datetime.now(UTC),
+        )
+        doc = _make_document("doc-3")
+        chunks = [_make_chunk(document_id="doc-3", text="New content.")]
+        llm = MagicMock()
+        llm.generate = AsyncMock(return_value="Fresh summary.")
+        vector_store = MagicMock()
+        vector_store.get_chunks_by_document_id = AsyncMock(return_value=chunks)
+        svc = SummaryService(vector_store=vector_store, llm_provider=llm, llm_model="m")
+
+        db = AsyncMock()
+        # Cache check returns existing, but regenerate=True should skip it
+        cache_result = MagicMock()
+        cache_result.scalars.return_value.first.return_value = existing
+        db.execute = AsyncMock(return_value=cache_result)
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+
+        await svc.get_or_generate(db, doc, regenerate=True)
+        llm.generate.assert_called()
+
+    async def test_generate_raises_when_no_chunks(self) -> None:
+        doc = _make_document("doc-empty")
+        vector_store = MagicMock()
+        vector_store.get_chunks_by_document_id = AsyncMock(return_value=[])
+        llm = MagicMock()
+        svc = SummaryService(vector_store=vector_store, llm_provider=llm, llm_model="m")
+        db = AsyncMock()
+
+        with pytest.raises(SummaryGenerationError):
+            await svc._generate(db, doc)
+
+    async def test_generate_single_batch_calls_llm_once(self) -> None:
+        """A single chunk batch → LLM called once (no combiner needed)."""
+        chunks = [_make_chunk(f"c{i}", text=f"Chunk {i}") for i in range(3)]
+        doc = _make_document("doc-sb")
+        vector_store = MagicMock()
+        vector_store.get_chunks_by_document_id = AsyncMock(return_value=chunks)
+        llm = MagicMock()
+        llm.generate = AsyncMock(return_value="Single batch summary.")
+        svc = SummaryService(vector_store=vector_store, llm_provider=llm, llm_model="m")
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=MagicMock(**{"scalars.return_value.first.return_value": None}))
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+
+        await svc._generate(db, doc)
+        # 3 chunks in one batch (_CHUNK_BATCH_SIZE=6) → one LLM call, no combiner
+        assert llm.generate.call_count == 1
+
+    async def test_generate_multi_batch_combines_summaries(self) -> None:
+        """More than CHUNK_BATCH_SIZE chunks → LLM called N+1 times (one combiner call)."""
+        _CHUNK_BATCH_SIZE = 6
+        chunks = [_make_chunk(f"c{i}", text=f"Chunk {i}") for i in range(_CHUNK_BATCH_SIZE + 2)]
+        doc = _make_document("doc-mb")
+        vector_store = MagicMock()
+        vector_store.get_chunks_by_document_id = AsyncMock(return_value=chunks)
+        llm = MagicMock()
+        llm.generate = AsyncMock(return_value="Partial summary.")
+        svc = SummaryService(vector_store=vector_store, llm_provider=llm, llm_model="m")
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=MagicMock(**{"scalars.return_value.first.return_value": None}))
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+
+        await svc._generate(db, doc)
+        # 8 chunks → 2 batches → 2 partial + 1 combine = 3 calls
+        assert llm.generate.call_count == 3
+
+    async def test_build_section_refs_extracts_pages(self) -> None:
+        chunks = [
+            _make_chunk(f"c{i}", page_number=i + 1, text=f"Page {i+1} content.")
+            for i in range(3)
+        ]
+        refs = SummaryService._build_section_refs(chunks)
+        assert refs is not None
+        assert len(refs) == 3
+        page_numbers = [r["page"] for r in refs]
+        assert page_numbers == [1, 2, 3]
+
+    async def test_build_section_refs_none_when_no_pages(self) -> None:
+        chunks = [_make_chunk("c1", page_number=None, text="No page.")]
+        refs = SummaryService._build_section_refs(chunks)
+        assert refs is None
+
+    async def test_build_section_refs_deduplicates_pages(self) -> None:
+        chunks = [
+            _make_chunk("c1", page_number=1, text="First."),
+            _make_chunk("c2", page_number=1, text="Also first."),
+            _make_chunk("c3", page_number=2, text="Second."),
+        ]
+        refs = SummaryService._build_section_refs(chunks)
+        assert refs is not None
+        assert len(refs) == 2

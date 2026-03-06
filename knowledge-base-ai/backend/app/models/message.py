@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.sqlite import JSON
@@ -57,7 +57,7 @@ class Message(Base):
         Text,
         nullable=False,
     )
-    source_references: Mapped[list[dict] | None] = mapped_column(
+    source_references: Mapped[list[dict[str, Any]] | None] = mapped_column(
         JSON,
         nullable=True,
         comment="Array of {document_id, file_name, chunk_ids, relevance_score}",

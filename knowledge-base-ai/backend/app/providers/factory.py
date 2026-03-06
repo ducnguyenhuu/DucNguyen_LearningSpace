@@ -20,6 +20,8 @@ Adding a new provider
 """
 from __future__ import annotations
 
+from typing import cast
+
 from app.config import settings
 from app.core.logging import get_logger
 from app.providers.base import EmbeddingProvider, LLMProvider
@@ -35,14 +37,13 @@ _EMBEDDING_PROVIDERS: dict[str, tuple[str, str]] = {
         "app.providers.local_embedding",
         "LocalEmbeddingProvider",
     ),
-    # Future:
-    # "openai": ("app.providers.openai_embedding", "OpenAIEmbeddingProvider"),
+    "openai": ("app.providers.openai_embedding", "OpenAIEmbeddingProvider"),
+    "ollama": ("app.providers.ollama_embedding", "OllamaEmbeddingProvider"),
 }
 
 _LLM_PROVIDERS: dict[str, tuple[str, str]] = {
     "ollama": ("app.providers.local_llm", "LocalLLMProvider"),
-    # Future:
-    # "claude": ("app.providers.claude_llm", "ClaudeLLMProvider"),
+    "claude": ("app.providers.claude_llm", "ClaudeLLMProvider"),
 }
 
 
@@ -51,7 +52,7 @@ def _load_class(module_path: str, class_name: str) -> type:
     import importlib
 
     module = importlib.import_module(module_path)
-    return getattr(module, class_name)
+    return cast(type, getattr(module, class_name))
 
 
 def create_embedding_provider(provider: str | None = None) -> EmbeddingProvider:

@@ -172,7 +172,7 @@ class PdfParser(DocumentParser):
 # ---------------------------------------------------------------------------
 
 
-def _extract_page_text(page: "fitz.Page") -> str:  # type: ignore[name-defined]
+def _extract_page_text(page: "fitz.Page") -> str:  # type: ignore[name-defined]  # noqa: F821
     """Return cleaned text for a single PDF page.
 
     Uses PyMuPDF's ``get_text("text")`` which preserves reading order
@@ -198,7 +198,7 @@ def _extract_page_text(page: "fitz.Page") -> str:  # type: ignore[name-defined]
 
 
 def _extract_page_sections(
-    page: "fitz.Page",  # type: ignore[name-defined]
+    page: "fitz.Page",  # type: ignore[name-defined]  # noqa: F821
     page_text: str,
     page_number: int,
     char_offset: int,

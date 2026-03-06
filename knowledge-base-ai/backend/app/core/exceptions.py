@@ -107,7 +107,7 @@ class IngestionConflictError(AppError):
     Maps to **FR-022** (single ingestion job enforcement).
     """
 
-    def __init__(self, job_id: int | None = None) -> None:
+    def __init__(self, job_id: str | int | None = None) -> None:
         detail = (
             f"Ingestion job {job_id} is already in progress."
             if job_id is not None
@@ -189,3 +189,40 @@ class ModelUnavailableError(AppError):
         )
         self.model = model
         self.reason = reason
+
+
+# ---------------------------------------------------------------------------
+# Summary-specific errors
+# ---------------------------------------------------------------------------
+
+
+class SummaryNotFoundError(AppError):
+    """Raised when no cached summary exists for the requested document."""
+
+    def __init__(self, document_id: str) -> None:
+        super().__init__(
+            message=f"No summary found for document {document_id}.",
+            code="summary_not_found",
+            status_code=HTTPStatus.NOT_FOUND,
+        )
+        self.document_id = document_id
+
+
+class DocumentNotReadyError(AppError):
+    """Raised when a summary is requested for a document not yet ingested.
+
+    Maps to the 409 branch in api-contracts.md §4.1:
+    ``409 — Document not yet ingested (status != completed)``.
+    """
+
+    def __init__(self, document_id: str, status: str) -> None:
+        super().__init__(
+            message=(
+                f"Document {document_id} is not ready for summarization "
+                f"(current status: '{status}'). Ingest the document first."
+            ),
+            code="document_not_ready",
+            status_code=HTTPStatus.CONFLICT,
+        )
+        self.document_id = document_id
+        self.status = status

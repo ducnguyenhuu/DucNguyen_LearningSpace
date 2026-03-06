@@ -63,24 +63,24 @@ const {
 
   // Default return values for the hooks
   const defaultDocuments = {
-    documents: [],
+    documents: [] as typeof mockDocuments,
     total: 0,
     page: 1,
     pageSize: 50,
     loading: false,
-    error: null,
+    error: null as string | null,
     deleting: false,
-    deleteError: null,
+    deleteError: null as string | null,
     deleteDocument: vi.fn(),
     refresh: vi.fn(),
   };
 
   const defaultIngestion = {
-    job: null,
-    currentFile: null,
-    fileErrors: [],
+    job: null as typeof mockJob | null,
+    currentFile: null as string | null,
+    fileErrors: [] as string[],
     starting: false,
-    startError: null,
+    startError: null as string | null,
     isRunning: false,
     reconnecting: false,
     startIngestion: vi.fn().mockResolvedValue(undefined),
@@ -98,7 +98,7 @@ const {
 // ---------------------------------------------------------------------------
 
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -130,7 +130,7 @@ vi.mock('../components/documents/DocumentTable', () => ({
           <span>{d.file_name}</span>
           <button
             data-testid={`delete-${d.id}`}
-            onClick={() => onDelete(d.id)}
+            onClick={() => { void onDelete(d.id); }}
           >
             Delete
           </button>
@@ -349,7 +349,7 @@ describe('DocumentList', () => {
 
   // ── Run Ingest button ────────────────────────────────────────────────────
 
-  it('calls startIngestion when Run Ingest is clicked', async () => {
+  it('calls startIngestion when Run Ingest is clicked', () => {
     const startIngestion = vi.fn().mockResolvedValue(undefined);
     mockUseIngestion.mockReturnValue({
       job: null,
@@ -363,7 +363,7 @@ describe('DocumentList', () => {
       reset: vi.fn(),
     });
     renderPage();
-    await act(async () => {
+    act(() => {
       // Click the header button (first occurrence)
       const [headerBtn] = screen.getAllByRole('button', { name: /run ingest/i });
       fireEvent.click(headerBtn);
@@ -504,7 +504,7 @@ describe('DocumentList', () => {
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
-  it('navigates to document detail when Summary is clicked', async () => {
+  it('navigates to document detail when Summary is clicked', () => {
     mockUseDocuments.mockReturnValue({
       documents: mockDocuments,
       total: 1,
@@ -518,7 +518,7 @@ describe('DocumentList', () => {
       refresh: vi.fn(),
     });
     renderPage();
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByTestId('summary-doc-1'));
     });
     expect(mockNavigate).toHaveBeenCalledWith('/documents/doc-1');

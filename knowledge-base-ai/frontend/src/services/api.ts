@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type {
   ConfigResponse,
   Conversation,
+  ConversationDetailResponse,
   ConversationListResponse,
   CreateConversationRequest,
   Document,
@@ -121,6 +122,11 @@ export async function createConversation(
   body: CreateConversationRequest = {},
 ): Promise<Conversation> {
   const { data } = await apiClient.post<Conversation>('/conversations', body);
+  return data;
+}
+
+export async function getConversation(id: string): Promise<ConversationDetailResponse> {
+  const { data } = await apiClient.get<ConversationDetailResponse>(`/conversations/${id}`);
   return data;
 }
 

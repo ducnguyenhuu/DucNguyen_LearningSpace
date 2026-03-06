@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import dataclasses
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
@@ -42,7 +42,7 @@ class MessageResponse(BaseModel):
     id: str
     role: str
     content: str
-    source_references: Optional[list[dict]] = None
+    source_references: Optional[list[dict[str, Any]]] = None
     created_at: datetime
 
 

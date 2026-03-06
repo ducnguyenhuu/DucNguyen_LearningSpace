@@ -16,7 +16,7 @@
  *   } = useChat(conversationIdFromRoute);
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { createConversation, sendMessage as apiSendMessage } from '../services/api';
+import { createConversation, getConversation } from '../services/api';
 import { WebSocketManager } from '../services/websocket';
 import type {
   ChatMessage,
@@ -84,7 +84,7 @@ export function useChat(initialConversationId: string | null = null): UseChatRes
   const pendingSourcesRef = useRef<SourceReference[]>([]);
 
   // ---------------------------------------------------------------------------
-  // Sync conversation ID when the route param changes
+  // Sync conversation ID when the route param changes & load history
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
@@ -93,6 +93,31 @@ export function useChat(initialConversationId: string | null = null): UseChatRes
     setActiveSources([]);
     setError(null);
     pendingSourcesRef.current = [];
+
+    if (!initialConversationId) return;
+
+    let cancelled = false;
+    getConversation(initialConversationId)
+      .then((detail) => {
+        if (cancelled) return;
+        setMessages(
+          detail.messages.map((m) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            source_references: m.source_references,
+            created_at: m.created_at,
+          })),
+        );
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(extractMessage(err));
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [initialConversationId]);
 
   // ---------------------------------------------------------------------------

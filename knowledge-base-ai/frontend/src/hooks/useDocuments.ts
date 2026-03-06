@@ -102,7 +102,7 @@ export function useDocuments(options: UseDocumentsOptions = {}): UseDocumentsRes
       }
     }
 
-    fetchDocs();
+    void fetchDocs();
 
     return () => {
       cancelled = true;

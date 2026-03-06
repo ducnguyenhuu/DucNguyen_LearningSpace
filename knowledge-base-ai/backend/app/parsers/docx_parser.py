@@ -76,7 +76,7 @@ def _parse_heading_level(style_name: str) -> int:
     return level if 1 <= level <= _MAX_HEADING_LEVEL else 0
 
 
-def _iter_paragraphs(doc: "docx.document.Document") -> Iterator[tuple[str, str]]:  # noqa: F821
+def _iter_paragraphs(doc: "docx.document.Document") -> Iterator[tuple[str, str]]:  # type: ignore[name-defined]  # noqa: F821
     """Yield ``(style_name, text)`` for each paragraph, skipping empty ones.
 
     Parameters

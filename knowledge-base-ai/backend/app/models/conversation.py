@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
+
+if TYPE_CHECKING:
+    from app.models.message import Message
 
 
 class Conversation(Base):
@@ -56,7 +60,7 @@ class Conversation(Base):
     )
 
     # Relationship — cascade delete propagates to all child messages
-    messages: Mapped[list["app.models.message.Message"]] = relationship(  # type: ignore[name-defined]
+    messages: Mapped[list["Message"]] = relationship(
         "Message",
         back_populates="conversation",
         cascade="all, delete-orphan",

@@ -18,12 +18,13 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.database import get_async_session
+from app.db.database import get_session
 from app.db.vector_store import VectorStore
 from app.providers.base import EmbeddingProvider, LLMProvider
 from app.providers.factory import create_embedding_provider, create_llm_provider
 from app.services.retrieval import RetrievalService
 from app.services.chat import ChatService
+from app.services.summary import SummaryService
 
 # ---------------------------------------------------------------------------
 # Singleton instances (module-level — initialised once at startup)
@@ -67,7 +68,7 @@ def get_singleton_llm_provider() -> LLMProvider:
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """Yield a per-request async database session."""
-    async with get_async_session() as session:  # type: ignore[attr-defined]
+    async with get_session() as session:
         yield session
 
 
@@ -117,5 +118,14 @@ def get_chat_service(
     return ChatService(retrieval_service=retrieval, llm_provider=llm)
 
 
+def get_summary_service(
+    store: Annotated[VectorStore, Depends(get_vector_store)],
+    llm: Annotated[LLMProvider, Depends(get_llm_provider)],
+) -> SummaryService:
+    """Return a per-request SummaryService assembled from singletons."""
+    return SummaryService(vector_store=store, llm_provider=llm)
+
+
 RetrSvc = Annotated[RetrievalService, Depends(get_retrieval_service)]
 ChatSvc = Annotated[ChatService, Depends(get_chat_service)]
+SummarySvc = Annotated[SummaryService, Depends(get_summary_service)]

@@ -342,7 +342,7 @@ class IngestionService:
                 document_id=doc.id,
             )
             await self._vector_store.delete_by_document_id(doc.id)
-            self._db.delete(doc)  # sync — no await
+            await self._db.delete(doc)
 
         if to_delete:
             await self._db.flush()
@@ -403,7 +403,7 @@ class IngestionService:
         try:
             # --- Parse ---
             parser = _PARSERS[sfile.extension]
-            parsed = parser.parse(Path(sfile.path))
+            parsed = await parser.parse(sfile.path)
 
             # --- Chunk ---
             chunks: list[TextChunk] = self._chunker.chunk(parsed)

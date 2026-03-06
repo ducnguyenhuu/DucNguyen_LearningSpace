@@ -62,8 +62,11 @@ def _get_engine() -> AsyncEngine:
         connect_args: dict[str, object] = {}
 
         if settings.is_sqlite:
-            # Required for SQLite to allow use across async tasks
+            # Required for SQLite to allow use across async tasks.
+            # timeout=30: wait up to 30 s for write-lock to be released (prevents
+            # "database is locked" errors under concurrent async requests).
             connect_args["check_same_thread"] = False
+            connect_args["timeout"] = 30
 
         _engine = create_async_engine(
             db_url,

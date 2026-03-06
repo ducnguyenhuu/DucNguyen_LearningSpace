@@ -79,7 +79,7 @@ describe('useConversations — initial fetch', () => {
     expect(result.current.conversations).toEqual([]);
 
     // clean up
-    await act(async () => { resolve(makeListResponse([])); });
+    await act(() => { resolve(makeListResponse([])); return Promise.resolve(); });
   });
 
   it('populates conversations and total on success', async () => {

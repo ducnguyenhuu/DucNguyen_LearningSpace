@@ -126,7 +126,7 @@ async def request_id_middleware(request: Request, call_next: object) -> Response
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
     structlog.contextvars.bind_contextvars(request_id=request_id)
 
-    response: Response = await call_next(request)  # type: ignore[operator, arg-type]
+    response: Response = await call_next(request)  # type: ignore[operator]
     response.headers["X-Request-ID"] = request_id
     structlog.contextvars.clear_contextvars()
     return response
@@ -221,6 +221,6 @@ app.include_router(conversations.router)
 from app.api.routes import chat  # noqa: E402
 app.include_router(chat.router)
 
-# Phase 5 routes (added when implementing US3):
-# from app.api.routes import summary
-# app.include_router(summary.router, prefix="/api/v1")
+# Phase 5 routes (US4 — On-demand document summarization)
+from app.api.routes import summary  # noqa: E402
+app.include_router(summary.router)

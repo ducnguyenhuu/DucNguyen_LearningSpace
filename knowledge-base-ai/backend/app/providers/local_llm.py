@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx
 
@@ -73,7 +74,7 @@ class LocalLLMProvider(LLMProvider):
         parts.append(f"\n\n### Question\n{prompt}")
         return "\n".join(parts)
 
-    def _request_body(self, full_prompt: str, stream: bool) -> dict:
+    def _request_body(self, full_prompt: str, stream: bool) -> dict[str, Any]:
         return {
             "model": self._model,
             "prompt": full_prompt,
@@ -81,6 +82,9 @@ class LocalLLMProvider(LLMProvider):
             "options": {
                 "temperature": self._temperature,
                 "num_ctx": self._context_window,
+                # Stop sequences prevent the model from continuing to
+                # role-play both sides of the conversation.
+                "stop": ["\nUser:", "\nuser:", "\n### Question"],
             },
         }
 

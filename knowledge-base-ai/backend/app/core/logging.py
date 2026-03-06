@@ -101,7 +101,7 @@ def configure_logging(
         structlog.stdlib.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
-        _add_app_info,
+        _add_app_info,  # type: ignore[list-item]
     ]
 
     if fmt == "json":
@@ -137,4 +137,4 @@ def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     - ``file_name``      — Source file being processed
     - ``duration_ms``    — Elapsed time for timed operations
     """
-    return structlog.get_logger(name)
+    return structlog.get_logger(name)  # type: ignore[no-any-return]
