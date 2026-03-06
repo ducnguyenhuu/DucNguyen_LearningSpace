@@ -99,7 +99,7 @@ export function useChat(initialConversationId: string | null = null): UseChatRes
     let cancelled = false;
     getConversation(initialConversationId)
       .then((detail) => {
-        if (cancelled) return;
+        if (cancelled || isStreamingRef.current) return;
         setMessages(
           detail.messages.map((m) => ({
             id: m.id,
@@ -111,7 +111,7 @@ export function useChat(initialConversationId: string | null = null): UseChatRes
         );
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
+        if (cancelled || isStreamingRef.current) return;
         setError(extractMessage(err));
       });
 
