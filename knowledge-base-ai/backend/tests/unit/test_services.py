@@ -785,3 +785,306 @@ class TestIngestionPipelineFileDetection:
         vector_store.add_chunks.assert_called_once()
         assert job.processed_files == 1
         assert existing_doc.status == "completed"
+
+
+# ===========================================================================
+# RetrievalService — T045
+# ===========================================================================
+
+from unittest.mock import AsyncMock, MagicMock
+
+from app.db.vector_store import ChunkResult
+from app.services.retrieval import RetrievalResult, RetrievalService, SourceReference
+
+
+def _make_chunk_result(
+    chunk_id: str = "doc1_0",
+    document_id: str = "doc-1",
+    file_name: str = "arch.pdf",
+    file_path: str = "/docs/arch.pdf",
+    text: str = "Chunk text about architecture.",
+    chunk_index: int = 0,
+    total_chunks: int = 5,
+    page_number: int | None = 3,
+    model_version: str = "nomic-embed-text-v1.5",
+    distance: float = 0.08,  # → relevance_score = 0.92
+) -> ChunkResult:
+    return ChunkResult(
+        chunk_id=chunk_id,
+        document_id=document_id,
+        file_name=file_name,
+        file_path=file_path,
+        text=text,
+        chunk_index=chunk_index,
+        total_chunks=total_chunks,
+        page_number=page_number,
+        model_version=model_version,
+        distance=distance,
+    )
+
+
+def _make_retrieval_service(
+    chunk_results: list[ChunkResult] | None = None,
+    embed_raises: Exception | None = None,
+) -> RetrievalService:
+    """Build a RetrievalService with fully mocked dependencies."""
+    provider = _StubEmbeddingProvider()
+    if embed_raises is not None:
+        provider = _StubEmbeddingProvider(raise_on_embed=embed_raises)
+
+    vector_store = MagicMock(spec_set=["query"])
+    vector_store.query = AsyncMock(return_value=chunk_results or [])
+
+    return RetrievalService(embedding_provider=provider, vector_store=vector_store)
+
+
+class TestSourceReference:
+    def test_fields_stored(self) -> None:
+        ref = SourceReference(
+            document_id="d1",
+            file_name="arch.pdf",
+            page_number=5,
+            relevance_score=0.91,
+        )
+        assert ref.document_id == "d1"
+        assert ref.file_name == "arch.pdf"
+        assert ref.page_number == 5
+        assert ref.relevance_score == 0.91
+
+    def test_to_dict_rounds_score(self) -> None:
+        ref = SourceReference(
+            document_id="d1",
+            file_name="arch.pdf",
+            page_number=None,
+            relevance_score=0.91234567,
+        )
+        d = ref.to_dict()
+        assert d["relevance_score"] == round(0.91234567, 4)
+        assert d["page_number"] is None
+        assert d["document_id"] == "d1"
+        assert d["file_name"] == "arch.pdf"
+
+    def test_frozen(self) -> None:
+        ref = SourceReference("d1", "f.pdf", 1, 0.9)
+        with pytest.raises(Exception):
+            ref.document_id = "x"  # type: ignore[misc]
+
+
+class TestRetrievalResult:
+    def test_to_source_reference(self) -> None:
+        result = RetrievalResult(
+            chunk_id="doc1_0",
+            document_id="doc-1",
+            file_name="arch.pdf",
+            file_path="/docs/arch.pdf",
+            text="Some text",
+            chunk_index=0,
+            total_chunks=5,
+            page_number=3,
+            relevance_score=0.92,
+            model_version="nomic-v1",
+        )
+        ref = result.to_source_reference()
+        assert isinstance(ref, SourceReference)
+        assert ref.document_id == "doc-1"
+        assert ref.file_name == "arch.pdf"
+        assert ref.page_number == 3
+        assert ref.relevance_score == 0.92
+
+    def test_to_source_reference_no_page(self) -> None:
+        result = RetrievalResult(
+            chunk_id="doc1_0",
+            document_id="doc-1",
+            file_name="notes.md",
+            file_path="/docs/notes.md",
+            text="Some text",
+            chunk_index=0,
+            total_chunks=2,
+            page_number=None,
+            relevance_score=0.85,
+        )
+        ref = result.to_source_reference()
+        assert ref.page_number is None
+
+    def test_frozen(self) -> None:
+        result = RetrievalResult(
+            chunk_id="x",
+            document_id="y",
+            file_name="f.md",
+            file_path="/f.md",
+            text="t",
+            chunk_index=0,
+            total_chunks=1,
+            page_number=None,
+            relevance_score=0.8,
+        )
+        with pytest.raises(Exception):
+            result.relevance_score = 0.5  # type: ignore[misc]
+
+
+class TestRetrievalService:
+    @pytest.mark.asyncio
+    async def test_returns_empty_when_no_results(self) -> None:
+        svc = _make_retrieval_service(chunk_results=[])
+        results = await svc.retrieve("What is the architecture?")
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_returns_retrieval_result_for_each_chunk(self) -> None:
+        chunks = [
+            _make_chunk_result(chunk_id="doc1_0", distance=0.08),  # score 0.92
+            _make_chunk_result(chunk_id="doc1_1", chunk_index=1, distance=0.10),  # score 0.90
+        ]
+        svc = _make_retrieval_service(chunk_results=chunks)
+        results = await svc.retrieve("architecture question")
+        assert len(results) == 2
+        assert all(isinstance(r, RetrievalResult) for r in results)
+
+    @pytest.mark.asyncio
+    async def test_results_sorted_by_relevance_descending(self) -> None:
+        # Return lower-score first from vector store to verify re-sort
+        chunks = [
+            _make_chunk_result(chunk_id="doc1_1", chunk_index=1, distance=0.20),  # 0.80
+            _make_chunk_result(chunk_id="doc1_0", chunk_index=0, distance=0.05),  # 0.95
+        ]
+        svc = _make_retrieval_service(chunk_results=chunks)
+        results = await svc.retrieve("question")
+        assert results[0].chunk_id == "doc1_0"
+        assert results[1].chunk_id == "doc1_1"
+        assert results[0].relevance_score > results[1].relevance_score
+
+    @pytest.mark.asyncio
+    async def test_chunk_result_fields_mapped_correctly(self) -> None:
+        chunk = _make_chunk_result(
+            chunk_id="doc1_2",
+            document_id="doc-42",
+            file_name="design.pdf",
+            file_path="/docs/design.pdf",
+            text="Service design principles.",
+            chunk_index=2,
+            total_chunks=10,
+            page_number=7,
+            model_version="nomic-v1.5",
+            distance=0.06,  # relevance_score = 0.94
+        )
+        svc = _make_retrieval_service(chunk_results=[chunk])
+        results = await svc.retrieve("design")
+        r = results[0]
+        assert r.chunk_id == "doc1_2"
+        assert r.document_id == "doc-42"
+        assert r.file_name == "design.pdf"
+        assert r.file_path == "/docs/design.pdf"
+        assert r.text == "Service design principles."
+        assert r.chunk_index == 2
+        assert r.total_chunks == 10
+        assert r.page_number == 7
+        assert r.model_version == "nomic-v1.5"
+        assert abs(r.relevance_score - 0.94) < 0.001
+
+    @pytest.mark.asyncio
+    async def test_filters_chunks_below_threshold(self) -> None:
+        # VectorStore already filters, but RetrievalService re-filters for safety
+        chunks = [
+            _make_chunk_result(chunk_id="ok", distance=0.08),    # score 0.92 ✓
+            _make_chunk_result(chunk_id="low", distance=0.40),   # score 0.60 ✗
+        ]
+        svc = _make_retrieval_service(chunk_results=chunks)
+        results = await svc.retrieve("question", similarity_threshold=0.70)
+        assert len(results) == 1
+        assert results[0].chunk_id == "ok"
+
+    @pytest.mark.asyncio
+    async def test_passes_top_k_to_vector_store(self) -> None:
+        provider = _StubEmbeddingProvider()
+        vector_store = MagicMock(spec_set=["query"])
+        vector_store.query = AsyncMock(return_value=[])
+        svc = RetrievalService(embedding_provider=provider, vector_store=vector_store)
+
+        await svc.retrieve("query", top_k=3)
+
+        vector_store.query.assert_called_once()
+        call_kwargs = vector_store.query.call_args
+        assert call_kwargs.kwargs.get("top_k") == 3
+
+    @pytest.mark.asyncio
+    async def test_passes_similarity_threshold_to_vector_store(self) -> None:
+        provider = _StubEmbeddingProvider()
+        vector_store = MagicMock(spec_set=["query"])
+        vector_store.query = AsyncMock(return_value=[])
+        svc = RetrievalService(embedding_provider=provider, vector_store=vector_store)
+
+        await svc.retrieve("query", similarity_threshold=0.85)
+
+        call_kwargs = vector_store.query.call_args
+        assert call_kwargs.kwargs.get("similarity_threshold") == 0.85
+
+    @pytest.mark.asyncio
+    async def test_raises_app_error_on_empty_query(self) -> None:
+        svc = _make_retrieval_service()
+        with pytest.raises(AppError):
+            await svc.retrieve("")
+
+    @pytest.mark.asyncio
+    async def test_raises_app_error_on_whitespace_query(self) -> None:
+        svc = _make_retrieval_service()
+        with pytest.raises(AppError):
+            await svc.retrieve("   ")
+
+    @pytest.mark.asyncio
+    async def test_raises_app_error_when_embedding_fails(self) -> None:
+        svc = _make_retrieval_service(embed_raises=RuntimeError("model down"))
+        with pytest.raises(AppError, match="Failed to embed query"):
+            await svc.retrieve("What is X?")
+
+    @pytest.mark.asyncio
+    async def test_embeds_query_before_calling_vector_store(self) -> None:
+        """Verify embed() is called with the exact query text."""
+        embed_calls: list[str] = []
+
+        class _TrackingProvider(_StubEmbeddingProvider):
+            async def embed(self, text: str) -> list[float]:
+                embed_calls.append(text)
+                return await super().embed(text)
+
+        vector_store = MagicMock(spec_set=["query"])
+        vector_store.query = AsyncMock(return_value=[])
+        svc = RetrievalService(
+            embedding_provider=_TrackingProvider(), vector_store=vector_store
+        )
+        await svc.retrieve("tell me about services")
+        assert embed_calls == ["tell me about services"]
+
+    @pytest.mark.asyncio
+    async def test_query_text_stripped(self) -> None:
+        """Leading/trailing whitespace in query is stripped before embedding."""
+        embed_calls: list[str] = []
+
+        class _TrackingProvider(_StubEmbeddingProvider):
+            async def embed(self, text: str) -> list[float]:
+                embed_calls.append(text)
+                return await super().embed(text)
+
+        vector_store = MagicMock(spec_set=["query"])
+        vector_store.query = AsyncMock(return_value=[])
+        svc = RetrievalService(
+            embedding_provider=_TrackingProvider(), vector_store=vector_store
+        )
+        await svc.retrieve("  hello world  ")
+        assert embed_calls == ["hello world"]
+
+    @pytest.mark.asyncio
+    async def test_to_source_reference_pipeline(self) -> None:
+        """End-to-end: retrieve returns results whose to_source_reference() yields correct data."""
+        chunk = _make_chunk_result(
+            document_id="doc-99",
+            file_name="spec.pdf",
+            page_number=4,
+            distance=0.07,  # score ≈ 0.93
+        )
+        svc = _make_retrieval_service(chunk_results=[chunk])
+        results = await svc.retrieve("spec question")
+        ref = results[0].to_source_reference()
+        assert ref.document_id == "doc-99"
+        assert ref.file_name == "spec.pdf"
+        assert ref.page_number == 4
+        assert ref.relevance_score > 0.9

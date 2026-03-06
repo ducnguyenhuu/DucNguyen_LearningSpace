@@ -1,72 +1,120 @@
 /**
- * Dashboard — landing page showing quick links and system status.
+ * Dashboard — landing page with stats, recent conversations, and quick actions.
+ * Implements frontend-contract.md §2.3.
  */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getHealth } from '../services/api';
-import type { HealthResponse } from '../services/types';
+import { useNavigate } from 'react-router-dom';
+import { getHealth, listConversations, listDocuments } from '../services/api';
+import type { Conversation, HealthResponse } from '../services/types';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
+  const [docCount, setDocCount] = useState<number | null>(null);
+  const [convCount, setConvCount] = useState<number | null>(null);
+  const [recentConvs, setRecentConvs] = useState<Conversation[]>([]);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getHealth()
-      .then(setHealth)
+    setLoading(true);
+    Promise.all([
+      listDocuments({ page: 1, page_size: 1 }),
+      listConversations(),
+      getHealth(),
+    ])
+      .then(([docsResp, convsResp, healthResp]) => {
+        setDocCount(docsResp.total);
+        setConvCount(convsResp.total);
+        setRecentConvs(convsResp.conversations.slice(0, 5));
+        setHealth(healthResp);
+      })
       .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : 'Unable to reach backend';
+        const msg = err instanceof Error ? err.message : 'Failed to load dashboard data';
         setError(msg);
-      });
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   return (
-    <div className="page page--dashboard">
+    <div data-testid="dashboard" className="page page--dashboard">
       <h1>Knowledge Base AI</h1>
-      <p className="subtitle">
-        Your local, private document knowledge base powered by local AI models.
-      </p>
 
-      <div className="quick-links">
-        <Link to="/documents" className="card card--link">
-          <h2>Documents</h2>
-          <p>Ingest and manage your document library.</p>
-        </Link>
-        <Link to="/chat" className="card card--link">
-          <h2>Chat</h2>
-          <p>Ask questions grounded in your documents.</p>
-        </Link>
-      </div>
+      {loading && (
+        <p data-testid="dashboard-loading" aria-live="polite">
+          Loading…
+        </p>
+      )}
 
-      <section className="system-status" aria-label="System status">
-        <h2>System Status</h2>
-        {error && (
-          <p className="status-error" role="alert">
-            {error}
-          </p>
-        )}
-        {health && !error && (
-          <dl className="status-list">
-            <dt>Backend</dt>
-            <dd className={health.status === 'ok' ? 'status-ok' : 'status-error'}>
-              {health.status}
-            </dd>
-            <dt>Ollama</dt>
-            <dd className={health.ollama === 'ok' ? 'status-ok' : 'status-warn'}>
-              {health.ollama}
-            </dd>
-            <dt>Embedding model</dt>
-            <dd>{health.embedding_model}</dd>
-            <dt>LLM model</dt>
-            <dd>{health.llm_model}</dd>
-            {health.reembedding && (
-              <>
-                <dt>Re-embedding</dt>
-                <dd className="status-warn">In progress — search results may vary</dd>
-              </>
+      {!loading && error && (
+        <p data-testid="dashboard-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {!loading && !error && (
+        <>
+          {/* Stats cards */}
+          <div className="stats-grid">
+            <div data-testid="stat-docs" className="stat-card">
+              <span className="stat-value">{docCount ?? '—'}</span>
+              <span className="stat-label">Documents</span>
+            </div>
+
+            <div data-testid="stat-conversations" className="stat-card">
+              <span className="stat-value">{convCount ?? '—'}</span>
+              <span className="stat-label">Conversations</span>
+            </div>
+
+            <div data-testid="stat-health" className="stat-card">
+              <span
+                className={`stat-value ${health?.status === 'ok' ? 'status-ok' : 'status-warn'}`}
+              >
+                {health?.status === 'ok' ? 'OK' : 'Degraded'}
+              </span>
+              <span className="stat-label">
+                Models: {health?.ollama === 'ok' ? '✓' : '⚠'}
+              </span>
+            </div>
+          </div>
+
+          {/* Recent conversations */}
+          <section data-testid="recent-conversations" className="recent-conversations">
+            <h2>Recent Conversations</h2>
+            {recentConvs.length === 0 ? (
+              <p data-testid="no-recent-conversations">No conversations yet.</p>
+            ) : (
+              <ul>
+                {recentConvs.map((conv) => (
+                  <li key={conv.id} data-testid="recent-conversation-item">
+                    <button
+                      className="conv-link"
+                      onClick={() => navigate(`/chat/${conv.id}`)}
+                    >
+                      {conv.title ?? 'Untitled conversation'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
-          </dl>
-        )}
-      </section>
+          </section>
+
+          {/* Quick actions */}
+          <section className="quick-actions">
+            <h2>Quick Actions</h2>
+            <button data-testid="btn-new-chat" onClick={() => navigate('/chat')}>
+              + New Chat
+            </button>
+            <button data-testid="btn-ingest-docs" onClick={() => navigate('/documents')}>
+              Ingest Docs
+            </button>
+            <button data-testid="btn-settings" onClick={() => navigate('/settings')}>
+              Settings
+            </button>
+          </section>
+        </>
+      )}
     </div>
   );
 }

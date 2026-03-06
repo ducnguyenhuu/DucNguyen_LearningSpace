@@ -381,3 +381,285 @@ class TestGetIngestionStatus:
             resp = c.get("/api/v1/ingestion/status/job-x")
         app.dependency_overrides.clear()
         assert "x-request-id" in resp.headers
+
+
+# ---------------------------------------------------------------------------
+# WS /api/v1/ingestion/progress/{job_id} — helper function tests
+# ---------------------------------------------------------------------------
+
+
+class TestIngestionWSHelpers:
+    """Unit-test the pure helper functions in the ingestion module."""
+
+    def test_normalize_progress_event(self) -> None:
+        from app.api.routes.ingestion import _normalize_event
+
+        raw = {
+            "type": "progress",
+            "job_id": "j1",
+            "processed": 3,
+            "total": 10,
+            "current_file": "file.pdf",
+        }
+        out = _normalize_event(raw)
+        assert out["processed_files"] == 3
+        assert out["total_files"] == 10
+        assert "processed" not in out
+        assert "total" not in out
+        assert out["current_file"] == "file.pdf"
+        assert out["type"] == "progress"
+
+    def test_normalize_file_complete_event(self) -> None:
+        from app.api.routes.ingestion import _normalize_event
+
+        raw = {
+            "type": "file_complete",
+            "job_id": "j1",
+            "file_name": "doc.docx",
+            "chunk_count": 15,
+        }
+        out = _normalize_event(raw)
+        assert out["chunks_created"] == 15
+        assert "chunk_count" not in out
+        assert out["file_name"] == "doc.docx"
+
+    def test_normalize_file_error_event_passthrough(self) -> None:
+        from app.api.routes.ingestion import _normalize_event
+
+        raw = {"type": "file_error", "job_id": "j1", "file_name": "bad.pdf", "error": "oops"}
+        out = _normalize_event(raw)
+        assert out["type"] == "file_error"
+        assert out["error"] == "oops"
+
+    def test_normalize_leaves_unknown_keys(self) -> None:
+        from app.api.routes.ingestion import _normalize_event
+
+        raw = {"type": "custom", "job_id": "j1", "some_extra": 42}
+        out = _normalize_event(raw)
+        assert out["some_extra"] == 42
+
+    def test_terminal_event_completed(self) -> None:
+        from app.api.routes.ingestion import _terminal_event_from_job
+
+        job = _make_job(
+            id="j1",
+            status="completed",
+            total_files=5,
+            new_files=3,
+            modified_files=1,
+            deleted_files=0,
+            skipped_files=1,
+            completed_at=_NOW,
+        )
+        job.started_at = datetime(2026, 3, 4, 12, 0, 0, tzinfo=UTC)
+        out = _terminal_event_from_job(job)
+        assert out["type"] == "completed"
+        assert out["job_id"] == "j1"
+        assert out["total_files"] == 5
+        assert out["new_files"] == 3
+        assert out["modified_files"] == 1
+        assert out["deleted_files"] == 0
+        assert out["skipped_files"] == 1
+        assert isinstance(out["duration_seconds"], float)
+
+    def test_terminal_event_no_completed_at(self) -> None:
+        from app.api.routes.ingestion import _terminal_event_from_job
+
+        job = _make_job(id="j1", status="failed")
+        out = _terminal_event_from_job(job)
+        assert out["type"] == "failed"
+        assert out["duration_seconds"] is None
+
+
+# ---------------------------------------------------------------------------
+# WS /api/v1/ingestion/progress/{job_id} — endpoint tests
+# ---------------------------------------------------------------------------
+
+_LIFESPAN_PATCHES = [
+    "app.main.init_db",
+    "app.main.init_singletons",
+    "app.main.close_db",
+    "app.main.get_singleton_vector_store",
+    "app.main.get_singleton_embedding_provider",
+    "app.main.get_singleton_llm_provider",
+]
+
+
+def _start_lifespan_patches() -> list:
+    patches = [patch(target) for target in _LIFESPAN_PATCHES]
+    patches.append(
+        patch("app.services.model_manager.ModelManager.startup", new_callable=AsyncMock)
+    )
+    for p in patches:
+        p.start()
+    return patches
+
+
+def _stop_patches(patches: list) -> None:
+    for p in patches:
+        p.stop()
+
+
+def _make_ws_db_mock(job: IngestionJob | None) -> AsyncMock:
+    """Build a mock AsyncSession whose execute() returns *job*."""
+    db = AsyncMock()
+    result = MagicMock()
+    result.scalars.return_value.first.return_value = job
+    db.execute = AsyncMock(return_value=result)
+    return db
+
+
+class TestIngestionProgressWS:
+    """WebSocket progress endpoint tests."""
+
+    def _ws_client(self, job: IngestionJob | None) -> tuple[TestClient, list]:
+        """Return (TestClient, active_patches) with DB mocked to return *job*."""
+        from contextlib import asynccontextmanager
+
+        db_mock = _make_ws_db_mock(job)
+
+        @asynccontextmanager
+        async def _mock_get_session():
+            yield db_mock
+
+        patches = _start_lifespan_patches()
+        gs_patch = patch("app.db.database.get_session", _mock_get_session)
+        gs_patch.start()
+        patches.append(gs_patch)
+        return TestClient(app, raise_server_exceptions=False), patches
+
+    # -- job not found -------------------------------------------------------
+
+    def test_ws_not_found_sends_error(self) -> None:
+        client, patches = self._ws_client(None)
+        try:
+            with client.websocket_connect("/api/v1/ingestion/progress/ghost") as ws:
+                msg = ws.receive_json()
+            assert msg["type"] == "error"
+            assert msg["code"] == "not_found"
+        finally:
+            _stop_patches(patches)
+
+    # -- already completed ---------------------------------------------------
+
+    def test_ws_completed_job_sends_terminal_event(self) -> None:
+        job = _make_job(id="j-done", status="completed", total_files=3, completed_at=_NOW)
+        client, patches = self._ws_client(job)
+        try:
+            with client.websocket_connect("/api/v1/ingestion/progress/j-done") as ws:
+                msg = ws.receive_json()
+            assert msg["type"] == "completed"
+            assert msg["job_id"] == "j-done"
+            assert msg["total_files"] == 3
+        finally:
+            _stop_patches(patches)
+
+    def test_ws_completed_job_duration_seconds_present(self) -> None:
+        job = _make_job(id="j-done2", status="completed", completed_at=_NOW)
+        client, patches = self._ws_client(job)
+        try:
+            with client.websocket_connect("/api/v1/ingestion/progress/j-done2") as ws:
+                msg = ws.receive_json()
+            assert "duration_seconds" in msg
+        finally:
+            _stop_patches(patches)
+
+    # -- already failed ------------------------------------------------------
+
+    def test_ws_failed_job_sends_terminal_event(self) -> None:
+        job = _make_job(id="j-fail", status="failed")
+        client, patches = self._ws_client(job)
+        try:
+            with client.websocket_connect("/api/v1/ingestion/progress/j-fail") as ws:
+                msg = ws.receive_json()
+            assert msg["type"] == "failed"
+            assert msg["job_id"] == "j-fail"
+        finally:
+            _stop_patches(patches)
+
+    # -- running job: live event streaming -----------------------------------
+
+    def _make_fake_queue(self, events: list[dict]) -> object:
+        """A fake asyncio.Queue whose get() yields pre-loaded events."""
+
+        class _FakeQueue:
+            def __init__(self) -> None:
+                self._items = list(events)
+                self._pos = 0
+
+            async def get(self) -> dict:  # type: ignore[override]
+                import asyncio
+
+                if self._pos < len(self._items):
+                    item = self._items[self._pos]
+                    self._pos += 1
+                    return item
+                await asyncio.sleep(999)  # block indefinitely if exhausted
+                return {}  # unreachable
+
+        return _FakeQueue()
+
+    def test_ws_running_job_relays_progress_event(self) -> None:
+        import asyncio as _asyncio
+
+        job = _make_job(id="j-run", status="running")
+        client, patches = self._ws_client(job)
+        fake_q = self._make_fake_queue([
+            {"type": "progress", "job_id": "j-run", "processed": 1, "total": 5, "current_file": "a.pdf"},
+            {"type": "_done_"},
+        ])
+        q_patch = patch.object(_asyncio, "Queue", return_value=fake_q)
+        q_patch.start()
+        patches.append(q_patch)
+        try:
+            with client.websocket_connect("/api/v1/ingestion/progress/j-run") as ws:
+                msg = ws.receive_json()
+            assert msg["type"] == "progress"
+            assert msg["processed_files"] == 1
+            assert msg["total_files"] == 5
+            assert msg["current_file"] == "a.pdf"
+        finally:
+            _stop_patches(patches)
+
+    def test_ws_running_job_relays_file_complete(self) -> None:
+        import asyncio as _asyncio
+
+        job = _make_job(id="j-run2", status="running")
+        client, patches = self._ws_client(job)
+        fake_q = self._make_fake_queue([
+            {"type": "file_complete", "job_id": "j-run2", "file_name": "doc.pdf", "chunk_count": 7},
+            {"type": "_done_"},
+        ])
+        q_patch = patch.object(_asyncio, "Queue", return_value=fake_q)
+        q_patch.start()
+        patches.append(q_patch)
+        try:
+            with client.websocket_connect("/api/v1/ingestion/progress/j-run2") as ws:
+                msg = ws.receive_json()
+            assert msg["type"] == "file_complete"
+            assert msg["chunks_created"] == 7
+            assert "chunk_count" not in msg
+        finally:
+            _stop_patches(patches)
+
+    def test_ws_running_job_closes_after_completed_event(self) -> None:
+        import asyncio as _asyncio
+
+        job = _make_job(id="j-run3", status="running")
+        client, patches = self._ws_client(job)
+        fake_q = self._make_fake_queue([
+            {"type": "progress", "job_id": "j-run3", "processed": 5, "total": 5, "current_file": "z.md"},
+            {"type": "completed", "job_id": "j-run3", "processed": 5, "total": 5, "failed": 0},
+        ])
+        q_patch = patch.object(_asyncio, "Queue", return_value=fake_q)
+        q_patch.start()
+        patches.append(q_patch)
+        try:
+            messages = []
+            with client.websocket_connect("/api/v1/ingestion/progress/j-run3") as ws:
+                messages.append(ws.receive_json())  # progress
+                messages.append(ws.receive_json())  # completed
+            assert messages[0]["type"] == "progress"
+            assert messages[1]["type"] == "completed"
+        finally:
+            _stop_patches(patches)

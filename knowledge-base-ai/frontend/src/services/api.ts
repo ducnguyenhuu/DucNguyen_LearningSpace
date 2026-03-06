@@ -129,7 +129,7 @@ export async function deleteConversation(id: string): Promise<void> {
 }
 
 export async function clearAllConversations(): Promise<void> {
-  await apiClient.delete('/conversations');
+  await apiClient.delete('/conversations', { params: { confirm: true } });
 }
 
 // ---------------------------------------------------------------------------

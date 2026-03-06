@@ -154,7 +154,7 @@ export type MessageRole = 'user' | 'assistant';
 export interface SourceReference {
   document_id: string;
   file_name: string;
-  chunk_ids: string[];
+  page_number: number | null;
   relevance_score: number;
 }
 
@@ -175,6 +175,23 @@ export interface SendMessageRequest {
 export interface SendMessageResponse {
   user_message: Message;
   assistant_message: Message;
+}
+
+// ---------------------------------------------------------------------------
+// Chat UI types (used by useChat hook and chat components)
+// ---------------------------------------------------------------------------
+
+/**
+ * A simplified, UI-friendly message type used by the chat hook and
+ * rendering components. Unlike the full Message type, this doesn't require
+ * conversation_id or token_count (which are server-side concerns).
+ */
+export interface ChatMessage {
+  id: string;
+  role: MessageRole;
+  content: string;
+  source_references: SourceReference[] | null;
+  created_at: string;
 }
 
 // ── WebSocket: Chat Streaming ─────────────────────────────────────────────
@@ -203,8 +220,7 @@ export interface TokenWs {
 
 export interface ChatCompleteWs {
   type: 'complete';
-  assistant_message_id: string;
-  token_count: number;
+  message_id: string;
 }
 
 export interface ChatErrorWs {

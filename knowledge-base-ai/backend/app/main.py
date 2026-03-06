@@ -211,14 +211,15 @@ app.include_router(system.router)
 from app.api.routes import ingestion  # noqa: E402
 app.include_router(ingestion.router)
 
-# Phase 3 documents route (added when implementing T039):
-# from app.api.routes import documents
-# app.include_router(documents.router)
+from app.api.routes import documents  # noqa: E402
+app.include_router(documents.router)
 
-# Phase 4 routes (added when implementing US2):
-# from app.api.routes import conversations, chat
-# app.include_router(conversations.router, prefix="/api/v1")
-# app.include_router(chat.router, prefix="/api/v1")
+# Phase 4 routes (US2 — Conversational Q&A)
+from app.api.routes import conversations  # noqa: E402
+app.include_router(conversations.router)
+
+from app.api.routes import chat  # noqa: E402
+app.include_router(chat.router)
 
 # Phase 5 routes (added when implementing US3):
 # from app.api.routes import summary
