@@ -272,7 +272,36 @@ docker-compose up --build -d
 
 ---
 
-## 8. Testing & Quality Gates
+## 8. Quick Start Script
+
+A convenience script is available at the project root to manage all services at once:
+
+```bash
+# First-time setup (installs deps, pulls models, runs migrations)
+./start.sh setup
+
+# Start all services (Ollama → Backend → Frontend)
+./start.sh
+
+# Check service status
+./start.sh status
+
+# Stop all services
+./start.sh stop
+```
+
+| Command | Description |
+|---------|-------------|
+| `./start.sh` | Start Ollama, Backend (port 8000), and Frontend (port 5173) |
+| `./start.sh stop` | Stop all running services |
+| `./start.sh status` | Show which services are currently running |
+| `./start.sh setup` | One-time setup: create venv, install pip/npm deps, pull Ollama models, run DB migrations |
+
+> **Note**: `start.sh` stores PID files in `.pids/` and logs in `.pids/*.log` for debugging.
+
+---
+
+## 9. Testing & Quality Gates
 
 ```bash
 # Backend type checking + linting

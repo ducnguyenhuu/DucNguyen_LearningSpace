@@ -79,9 +79,11 @@ vi.mock('../services/websocket', () => ({
 vi.mock('../services/api', () => ({
   createConversation: vi.fn(),
   sendMessage: vi.fn(),
+  getConversation: vi.fn(),
 }));
 
 const mockCreateConversation = vi.mocked(api.createConversation);
+const mockGetConversation = vi.mocked(api.getConversation);
 
 function makeConversation(id = 'conv-1'): Conversation {
   return {
@@ -101,6 +103,14 @@ function makeConversation(id = 'conv-1'): Conversation {
 beforeEach(() => {
   vi.clearAllMocks();
   MockWebSocketManager.lastInstance = null;
+  // Default: getConversation returns an empty conversation detail
+  mockGetConversation.mockResolvedValue({
+    id: 'conv-1',
+    title: null,
+    messages: [],
+    created_at: '2026-03-05T12:00:00Z',
+    updated_at: '2026-03-05T12:00:00Z',
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -481,6 +491,69 @@ describe('useChat — conversationId prop change', () => {
 
     await waitFor(() => {
       expect(result.current.activeSources).toHaveLength(0);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Load conversation history
+// ---------------------------------------------------------------------------
+
+describe('useChat — conversation history loading', () => {
+  it('fetches messages when initialConversationId is provided', async () => {
+    mockGetConversation.mockResolvedValue({
+      id: 'conv-existing',
+      title: 'Test Chat',
+      messages: [
+        {
+          id: 'msg-1',
+          conversation_id: 'conv-existing',
+          role: 'user',
+          content: 'Hello',
+          source_references: null,
+          token_count: null,
+          created_at: '2026-03-05T12:00:00Z',
+        },
+        {
+          id: 'msg-2',
+          conversation_id: 'conv-existing',
+          role: 'assistant',
+          content: 'Hi there!',
+          source_references: [{ document_id: 'd1', file_name: 'a.pdf', page_number: 1, relevance_score: 0.9 }],
+          token_count: 5,
+          created_at: '2026-03-05T12:00:01Z',
+        },
+      ],
+      created_at: '2026-03-05T12:00:00Z',
+      updated_at: '2026-03-05T12:00:01Z',
+    });
+
+    const { result } = renderHook(() => useChat('conv-existing'));
+
+    await waitFor(() => {
+      expect(result.current.messages).toHaveLength(2);
+    });
+
+    expect(mockGetConversation).toHaveBeenCalledWith('conv-existing');
+    expect(result.current.messages[0].role).toBe('user');
+    expect(result.current.messages[0].content).toBe('Hello');
+    expect(result.current.messages[1].role).toBe('assistant');
+    expect(result.current.messages[1].content).toBe('Hi there!');
+    expect(result.current.messages[1].source_references).toHaveLength(1);
+  });
+
+  it('does NOT fetch when initialConversationId is null', () => {
+    renderHook(() => useChat(null));
+    expect(mockGetConversation).not.toHaveBeenCalled();
+  });
+
+  it('sets error when fetch fails', async () => {
+    mockGetConversation.mockRejectedValue(new Error('Network error'));
+
+    const { result } = renderHook(() => useChat('conv-bad'));
+
+    await waitFor(() => {
+      expect(result.current.error).toBe('Network error');
     });
   });
 });
