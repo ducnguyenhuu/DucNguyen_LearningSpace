@@ -210,77 +210,186 @@ data/prod-web-app-2026-02-06-14-30.json
 **JSON structure:**
 ```json
 {
-  "metadata": {
-    "app_id": "12345678",
-    "app_name": "prod-web-app",
-    "collected_at": "2026-02-06T14:30:00Z",
-    "time_range": {
-      "start": "2026-02-05T14:30:00Z",
-      "end": "2026-02-06T14:30:00Z"
-    },
-    "new_relic_account": "1234567"
-  },
+  "app_id": "12345678",
+  "app_name": "prod-web-app",
+  "days": 1,
+  "collected_at": "2026-02-06T14:30:00Z",
   
   "performance": {
-    "response_time": {
-      "average_ms": 185,
-      "p50_ms": 150,
-      "p95_ms": 270,
-      "p99_ms": 450
-    },
-    "throughput": {
-      "requests_per_minute": 1250,
-      "requests_total": 1800000
-    },
-    "apdex": {
-      "score": 0.87,
-      "satisfied": 85,
-      "tolerating": 10,
-      "frustrated": 5
+    "app_id": "12345678",
+    "timestamp": "2026-02-06T14:30:00Z",
+    "performance": {
+      "response_time": 185.5,
+      "p50_ms": 150.2,
+      "p95_ms": 270.8,
+      "p99_ms": 450.1,
+      "throughput": 1250.0,
+      "total_requests": 1800000,
+      "apdex_score": 0.87,
+      "apdex_satisfied": 1530000,
+      "apdex_tolerating": 180000,
+      "apdex_frustrated": 90000
     }
   },
   
   "errors": {
-    "total_count": 1234,
-    "error_rate": 0.068,
-    "by_class": [
-      {
-        "class": "NullPointerException",
-        "count": 856,
-        "message": "Cannot invoke getId() on null object",
-        "first_seen": "2026-02-06T12:30:00Z",
-        "stack_trace": [
-          "com.example.PaymentProcessor.processPayment(PaymentProcessor.java:145)",
-          "com.example.CheckoutController.checkout(CheckoutController.java:78)"
-        ],
-        "affected_users": 512
-      }
-    ]
-  },
-  
-  "transactions": {
-    "slowest": [
-      {
-        "name": "Controller/users/show",
-        "average_duration_ms": 850,
-        "call_count": 5000,
-        "database_time_ms": 780,
-        "database_queries": 45,
-        "external_time_ms": 50
-      }
-    ]
+    "app_id": "12345678",
+    "timestamp": "2026-02-06T14:30:00Z",
+    "errors": {
+      "error_rate": 0.068,
+      "error_count": 1234,
+      "total_transactions": 18150,
+      "error_types": ["NullReferenceException", "TimeoutException"]
+    }
   },
   
   "infrastructure": {
-    "cpu_percent": 45.2,
-    "memory_percent": 62.8,
-    "disk_io_percent": 15.3
+    "app_id": "12345678",
+    "timestamp": "2026-02-06T14:30:00Z",
+    "infrastructure": {
+      "cpu_usage": 0.452,
+      "memory_usage": null,
+      "memory_physical_mb": 2048.5,
+      "disk_io": null
+    }
+  },
+  
+  "database": {
+    "app_id": "12345678",
+    "timestamp": "2026-02-06T14:30:00Z",
+    "database": {
+      "query_time": 45.2,
+      "slow_queries": 12,
+      "connection_pool_usage": 0.35,
+      "database_calls": 856
+    }
+  },
+  
+  "transactions": {
+    "app_id": "12345678",
+    "timestamp": "2026-02-06T14:30:00Z",
+    "transactions": {
+      "transaction_time": 185.5,
+      "external_calls": 4,
+      "external_latency": 120.3,
+      "api_endpoints": ["Controller/users/show", "Controller/orders/create"]
+    }
+  },
+  
+  "error_details": {
+    "error_details": [
+      {
+        "error_class": "NullReferenceException",
+        "count": 856,
+        "message": "Object reference not set to an instance of an object",
+        "stack_trace": "at PaymentProcessor.Process()..."
+      }
+    ]
+  },
+  
+  "slow_transactions": {
+    "slow_transactions": [
+      {
+        "name": "Controller/users/show",
+        "avg_duration_ms": 850.0,
+        "p95_ms": 1200.0,
+        "call_count": 5000,
+        "db_time_ms": 780.0,
+        "db_call_count": 45,
+        "external_time_ms": 50.0,
+        "external_call_count": 2
+      }
+    ]
+  },
+  
+  "database_details": {
+    "database_details": [
+      {
+        "datastore_type": "MSSQL",
+        "table": "Orders",
+        "operation": "select",
+        "avg_duration_ms": 25.3,
+        "p95_ms": 45.1,
+        "call_count": 12500
+      }
+    ]
+  },
+  
+  "external_services": {
+    "external_services": [
+      {
+        "host": "api.payment.com",
+        "avg_duration_ms": 120.5,
+        "p95_ms": 350.0,
+        "call_count": 8500
+      }
+    ]
+  },
+  
+  "application_logs": {
+    "application_logs": [
+      {
+        "timestamp": "2026-02-06T14:25:00Z",
+        "level": "ERROR",
+        "message": "Connection timeout after 30000ms",
+        "error_class": "TimeoutException"
+      }
+    ]
+  },
+  
+  "log_volume": {
+    "log_volume": [
+      {"level": "INFO", "count": 125000},
+      {"level": "ERROR", "count": 1234},
+      {"level": "WARN", "count": 456}
+    ]
+  },
+  
+  "alerts": {
+    "alerts": [
+      {
+        "title": "High Error Rate",
+        "priority": "CRITICAL",
+        "state": "closed",
+        "condition_name": "Error percentage",
+        "policy_name": "Production",
+        "open_time": "2026-02-06T12:00:00Z",
+        "close_time": "2026-02-06T12:15:00Z",
+        "duration_seconds": 900
+      }
+    ]
+  },
+  
+  "hourly_trends": {
+    "hourly_trends": [
+      {
+        "timestamp": "2026-02-06T00:00:00Z",
+        "avg_response_ms": 180.5,
+        "throughput_rpm": 1200.0,
+        "error_rate": 0.02
+      }
+    ]
   },
   
   "baselines": {
-    "response_time_7d_avg": 200,
-    "error_rate_7d_avg": 0.025,
-    "throughput_7d_avg": 1200
+    "baselines": {
+      "response_time_7d_avg_ms": 200.0,
+      "throughput_7d_avg_rpm": 1200.0,
+      "error_rate_7d_avg": 0.025,
+      "total_requests_7d": 12096000
+    }
+  },
+  
+  "deployments": {
+    "deployments": [
+      {
+        "timestamp": "2026-02-05T16:30:00Z",
+        "revision": "v2.1.4",
+        "description": "Fix payment timeout",
+        "user": "deploy-bot",
+        "changelog": "Increased timeout to 60s"
+      }
+    ]
   }
 }
 ```
@@ -919,12 +1028,14 @@ def calculate_health_score(data: dict) -> float:
 
 ### 4.3 New Relic GraphQL Queries
 
-**Fetch APM Metrics:**
+All queries use the NerdGraph GraphQL API (`https://api.newrelic.com/graphql`) with NRQL embedded in the `nrql(query:)` field.
+
+**1. Performance Metrics (response time in ms, percentiles, Apdex, throughput):**
 ```graphql
 {
   actor {
-    account(id: 1234567) {
-      nrql(query: "SELECT average(duration), percentile(duration, 50, 95, 99), rate(count(*), 1 minute) as 'throughput', apdex(duration, t: 0.5) FROM Transaction WHERE appId = 12345678 SINCE 24 hours ago") {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT average(duration) * 1000 as 'avg_response_ms', percentile(duration, 50) * 1000 as 'p50_ms', percentile(duration, 95) * 1000 as 'p95_ms', percentile(duration, 99) * 1000 as 'p99_ms', rate(count(*), 1 minute) as 'throughput_rpm', count(*) as 'total_requests', apdex(duration, t:0.5) as 'apdex_score', filter(count(*), WHERE apdexPerfZone = 'S') as 'apdex_satisfied', filter(count(*), WHERE apdexPerfZone = 'T') as 'apdex_tolerating', filter(count(*), WHERE apdexPerfZone = 'F') as 'apdex_frustrated' FROM Transaction WHERE appId = 'APP_ID' SINCE 'SINCE_ISO'") {
         results
       }
     }
@@ -932,12 +1043,12 @@ def calculate_health_score(data: dict) -> float:
 }
 ```
 
-**Fetch Errors:**
+**2. Error Metrics (rate, count, types):**
 ```graphql
 {
   actor {
-    account(id: 1234567) {
-      nrql(query: "SELECT count(*), percentage(count(*), WHERE error IS true) as 'error_rate', uniques(error.class) FROM Transaction WHERE appId = 12345678 SINCE 24 hours ago") {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT percentage(count(*), WHERE error IS true) as 'error.rate', filter(count(*), WHERE error IS true) as 'error.count', count(*) as 'total.transactions', uniques(error.class) as 'error.types' FROM Transaction WHERE appId = 'APP_ID' SINCE 'SINCE_ISO'") {
         results
       }
     }
@@ -945,12 +1056,26 @@ def calculate_health_score(data: dict) -> float:
 }
 ```
 
-**Fetch Error Details:**
+**3. Infrastructure Metrics (CPU, Memory via APM Metric events):**
 ```graphql
 {
   actor {
-    account(id: 1234567) {
-      nrql(query: "SELECT count(*), latest(error.message), latest(error.class), latest(stack_trace) FROM TransactionError WHERE appId = 12345678 SINCE 24 hours ago FACET error.class LIMIT 100") {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT average(apm.service.cpu.usertime.utilization) as 'cpu.utilization', average(apm.service.memory.physical) / 1048576 as 'memory.mb' FROM Metric WHERE appName = 'APP_NAME' SINCE 'SINCE_ISO'") {
+        results
+      }
+    }
+  }
+}
+```
+> Note: SystemSample events are keyed by hostname, not appId. APM Metric events are used instead for reliable APM-linked infrastructure data. `cpu.utilization` is 0.0-1.0, `memory.mb` is absolute MB.
+
+**4. Database Metrics:**
+```graphql
+{
+  actor {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT average(databaseDuration) * 1000 as 'query_time_ms', filter(count(*), WHERE databaseDuration > 0.5) as 'slow_queries', percentage(count(*), WHERE databaseCallCount > 10) as 'high_db_call_pct', average(databaseCallCount) as 'avg_db_calls' FROM Transaction WHERE appId = 'APP_ID' SINCE 'SINCE_ISO'") {
         results
       }
     }
@@ -958,12 +1083,142 @@ def calculate_health_score(data: dict) -> float:
 }
 ```
 
-**Fetch Slow Transactions:**
+**5. Transaction/API Metrics:**
 ```graphql
 {
   actor {
-    account(id: 1234567) {
-      nrql(query: "SELECT average(duration), average(databaseDuration), average(databaseCallCount), count(*) FROM Transaction WHERE appId = 12345678 SINCE 24 hours ago FACET name ORDER BY average(duration) DESC LIMIT 20") {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT average(duration) * 1000 as 'avg_duration_ms', average(externalCallCount) as 'ext_calls', average(externalDuration) * 1000 as 'ext_latency_ms', uniques(name) as 'endpoints' FROM Transaction WHERE appId = 'APP_ID' SINCE 'SINCE_ISO'") {
+        results
+      }
+    }
+  }
+}
+```
+
+**6. Error Details with Stack Traces:**
+```graphql
+{
+  actor {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT count(*) as 'count', latest(error.message) as 'message', latest(stackTrace) as 'stack_trace' FROM TransactionError WHERE appId = 'APP_ID' SINCE 'SINCE_ISO' FACET error.class LIMIT 50") {
+        results
+      }
+    }
+  }
+}
+```
+
+**7. Slow Transactions (per-endpoint breakdown):**
+```graphql
+{
+  actor {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT average(duration) * 1000 as 'avg_duration_ms', percentile(duration, 95) * 1000 as 'p95_ms', count(*) as 'call_count', average(databaseDuration) * 1000 as 'db_time_ms', average(databaseCallCount) as 'db_call_count', average(externalDuration) * 1000 as 'external_time_ms', average(externalCallCount) as 'external_call_count' FROM Transaction WHERE appId = 'APP_ID' SINCE 'SINCE_ISO' FACET name LIMIT 20") {
+        results
+      }
+    }
+  }
+}
+```
+
+**8. Database Details (by type/table/operation):**
+```graphql
+{
+  actor {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT average(duration) * 1000 as 'avg_duration_ms', percentile(duration, 95) * 1000 as 'p95_ms', count(*) as 'call_count' FROM DatastoreSegment WHERE appId = 'APP_ID' SINCE 'SINCE_ISO' FACET datastoreType, table, operation LIMIT 20") {
+        results
+      }
+    }
+  }
+}
+```
+
+**9. External Services (by host):**
+```graphql
+{
+  actor {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT average(duration) * 1000 as 'avg_duration_ms', count(*) as 'call_count', percentile(duration, 95) * 1000 as 'p95_ms' FROM ExternalSegment WHERE appId = 'APP_ID' SINCE 'SINCE_ISO' FACET host LIMIT 15") {
+        results
+      }
+    }
+  }
+}
+```
+
+**10. Application Logs (errors/warnings/exceptions):**
+```graphql
+{
+  actor {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT timestamp, level, message, error.class FROM Log WHERE entity.name = 'APP_NAME' AND (level IN ('ERROR','WARN','FATAL','SEVERE') OR message LIKE '%exception%' OR message LIKE '%timeout%' OR message LIKE '%fail%') SINCE 'SINCE_ISO' LIMIT 500") {
+        results
+      }
+    }
+  }
+}
+```
+
+**11. Log Volume (by level):**
+```graphql
+{
+  actor {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT count(*) as 'count' FROM Log WHERE entity.name = 'APP_NAME' SINCE 'SINCE_ISO' FACET level") {
+        results
+      }
+    }
+  }
+}
+```
+
+**12. Alerts/Incidents:**
+```graphql
+{
+  actor {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT title, priority, state, conditionName, policyName, openTime, closeTime, durationSeconds FROM NrAiIncident WHERE entity.name = 'APP_NAME' SINCE 'SINCE_ISO' LIMIT 50") {
+        results
+      }
+    }
+  }
+}
+```
+
+**13. Hourly Performance Trends (time series):**
+```graphql
+{
+  actor {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT average(duration) * 1000 as 'avg_response_ms', rate(count(*), 1 minute) as 'throughput_rpm', percentage(count(*), WHERE error IS true) as 'error_rate' FROM Transaction WHERE appId = 'APP_ID' SINCE 'SINCE_ISO' TIMESERIES 1 hour") {
+        results
+      }
+    }
+  }
+}
+```
+
+**14. 7-Day Baselines:**
+```graphql
+{
+  actor {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT average(duration) * 1000 as 'response_time_7d_avg_ms', rate(count(*), 1 minute) as 'throughput_7d_avg_rpm', percentage(count(*), WHERE error IS true) / 100 as 'error_rate_7d_avg', count(*) as 'total_requests_7d' FROM Transaction WHERE appId = 'APP_ID' SINCE 7 days ago") {
+        results
+      }
+    }
+  }
+}
+```
+
+**15. Deployments:**
+```graphql
+{
+  actor {
+    account(id: ACCOUNT_ID) {
+      nrql(query: "SELECT timestamp, revision, description, user, changelog FROM Deployment WHERE entity.name = 'APP_NAME' SINCE 'SINCE_ISO' LIMIT 20") {
         results
       }
     }

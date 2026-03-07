@@ -16,7 +16,7 @@ from typing import Any, Dict
 DEFAULT_PROFILE = 'dev'
 CONFIG_FILE = 'config.yaml'
 PROFILE_CONFIG_TEMPLATE = '.newrelic_config.{profile}.json'
-ALLOWED_DAYS = {3, 7, 14, 30}
+ALLOWED_DAYS = {1, 3, 7, 14, 30}
 
 
 logger = logging.getLogger(__name__)

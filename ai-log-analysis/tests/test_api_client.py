@@ -95,7 +95,7 @@ class TestApiClientSuccessfulRequests(unittest.TestCase):
         # Verify headers
         call_args = mock_post.call_args
         headers = call_args[1]['headers']
-        self.assertEqual(headers['Authorization'], 'Bearer test-key')
+        self.assertEqual(headers['Api-Key'], 'test-key')
         self.assertEqual(headers['Content-Type'], 'application/json')
     
     @patch('modules.api_client.requests.post')
@@ -479,9 +479,16 @@ class TestPerformanceMetrics(unittest.TestCase):
                         "nrql": {
                             "results": [
                                 {
-                                    "average.duration": 245.7,
-                                    "rate": 1234.5,
-                                    "apdex": 0.87
+                                    "avg_response_ms": 245.7,
+                                    "p50_ms": 200.0,
+                                    "p95_ms": 400.0,
+                                    "p99_ms": 600.0,
+                                    "throughput_rpm": 1234.5,
+                                    "total_requests": 50000,
+                                    "apdex_score": 0.87,
+                                    "apdex_satisfied": 42500,
+                                    "apdex_tolerating": 5000,
+                                    "apdex_frustrated": 2500
                                 }
                             ]
                         }
@@ -514,6 +521,8 @@ class TestPerformanceMetrics(unittest.TestCase):
         self.assertEqual(perf["response_time"], 245.7)
         self.assertEqual(perf["throughput"], 1234.5)
         self.assertEqual(perf["apdex_score"], 0.87)
+        self.assertEqual(perf["p95_ms"], 400.0)
+        self.assertEqual(perf["total_requests"], 50000)
         
         # Verify timestamp is ISO 8601 format
         self.assertRegex(result["timestamp"], r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}')
@@ -522,8 +531,8 @@ class TestPerformanceMetrics(unittest.TestCase):
         """Test days parameter validation with valid values."""
         client = ApiClient(api_key="test-key", account_id="123456")
         
-        # Valid values: 3, 7, 14, 30
-        valid_days = [3, 7, 14, 30]
+        # Valid values: 1, 3, 7, 14, 30
+        valid_days = [1, 3, 7, 14, 30]
         
         for days in valid_days:
             with patch.object(ApiClient, '_make_request') as mock_request:
@@ -532,7 +541,7 @@ class TestPerformanceMetrics(unittest.TestCase):
                         "actor": {
                             "account": {
                                 "nrql": {
-                                    "results": [{"average.duration": 100.0, "rate": 50.0, "apdex": 0.9}]
+                                    "results": [{"avg_response_ms": 100.0, "throughput_rpm": 50.0, "apdex_score": 0.9}]
                                 }
                             }
                         }
@@ -546,8 +555,8 @@ class TestPerformanceMetrics(unittest.TestCase):
         """Test days parameter validation with invalid values."""
         client = ApiClient(api_key="test-key", account_id="123456")
         
-        # Invalid values
-        invalid_days = [0, 1, 5, 15, 60, -1, 100]
+        # Invalid values (1 is now valid)
+        invalid_days = [0, 2, 5, 15, 60, -1, 100]
         
         for days in invalid_days:
             with self.assertRaises(ValueError) as context:
@@ -584,9 +593,9 @@ class TestPerformanceMetrics(unittest.TestCase):
                         "nrql": {
                             "results": [
                                 {
-                                    "average.duration": None,
-                                    "rate": 100.0,
-                                    "apdex": None
+                                    "avg_response_ms": None,
+                                    "throughput_rpm": 100.0,
+                                    "apdex_score": None
                                 }
                             ]
                         }
@@ -614,9 +623,9 @@ class TestPerformanceMetrics(unittest.TestCase):
                         "nrql": {
                             "results": [
                                 {
-                                    "average.duration": "245.7",  # String!
-                                    "rate": "1234.5",  # String!
-                                    "apdex": "0.87"  # String!
+                                    "avg_response_ms": "245.7",  # String!
+                                    "throughput_rpm": "1234.5",  # String!
+                                    "apdex_score": "0.87"  # String!
                                 }
                             ]
                         }
@@ -654,9 +663,9 @@ class TestPerformanceMetrics(unittest.TestCase):
                             "nrql": {
                                 "results": [
                                     {
-                                        "average.duration": 100.0,
-                                        "rate": 50.0,
-                                        "apdex": apdex
+                                        "avg_response_ms": 100.0,
+                                        "throughput_rpm": 50.0,
+                                        "apdex_score": apdex
                                     }
                                 ]
                             }
@@ -681,7 +690,7 @@ class TestPerformanceMetrics(unittest.TestCase):
                     "account": {
                         "nrql": {
                             "results": [
-                                {"average.duration": 100.0, "rate": 50.0, "apdex": 0.9}
+                                {"avg_response_ms": 100.0, "throughput_rpm": 50.0, "apdex_score": 0.9}
                             ]
                         }
                     }
@@ -759,7 +768,7 @@ class TestPerformanceMetrics(unittest.TestCase):
                     "account": {
                         "nrql": {
                             "results": [
-                                {"average.duration": 100.0, "rate": 50.0, "apdex": 0.9}
+                                {"avg_response_ms": 100.0, "throughput_rpm": 50.0, "apdex_score": 0.9}
                             ]
                         }
                     }
@@ -850,15 +859,15 @@ class TestErrorMetrics(unittest.TestCase):
         self.assertEqual(errors["error_count"], 127)
         self.assertEqual(len(errors["error_types"]), 3)
         
-        # Verify timestamp is ISO 8601 format with 'Z'
-        self.assertRegex(result["timestamp"], r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*Z$')
+        # Verify timestamp is ISO 8601 format with timezone offset
+        self.assertRegex(result["timestamp"], r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}')
     
     def test_days_validation_valid_values(self):
         """Test days parameter validation with valid values."""
         client = ApiClient(api_key="test-key", account_id="123456")
         
-        # Valid values: 3, 7, 14, 30
-        valid_days = [3, 7, 14, 30]
+        # Valid values: 1, 3, 7, 14, 30
+        valid_days = [1, 3, 7, 14, 30]
         
         for days in valid_days:
             with patch.object(ApiClient, '_make_request') as mock_request:
@@ -881,8 +890,8 @@ class TestErrorMetrics(unittest.TestCase):
         """Test days parameter validation with invalid values."""
         client = ApiClient(api_key="test-key", account_id="123456")
         
-        # Invalid values
-        invalid_days = [0, 1, 5, 15, 60, -1, 100]
+        # Invalid values (1 is now valid)
+        invalid_days = [0, 2, 5, 15, 60, -1, 100]
         
         for days in invalid_days:
             with self.assertRaises(ValueError) as context:
@@ -1232,49 +1241,42 @@ from modules.api_client import ApiClient
 class TestInfrastructureMetrics(unittest.TestCase):
     """Test fetch_infrastructure_metrics method."""
     
-    @patch.object(ApiClient, '_make_request')
-    def test_fetch_infrastructure_metrics_success(self, mock_request):
-        """Test successful infrastructure metrics fetch with valid data."""
-        mock_request.return_value = {
-            "data": {
-                "actor": {
-                    "account": {
-                        "nrql": {
-                            "results": [
-                                {
-                                    "cpu.usage": 75.5,
-                                    "memory.usage": 62.3,
-                                    "disk.io": 45.7
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        }
+    @patch.object(ApiClient, '_nrql_request')
+    def test_fetch_infrastructure_metrics_success(self, mock_nrql):
+        """Test successful infrastructure metrics fetch with SystemSample data."""
+        # Three NRQL calls: host discovery, SystemSample, (no fallbacks needed)
+        mock_nrql.side_effect = [
+            # 1) host discovery
+            [{"uniques.host": ["WEBHOST01"]}],
+            # 2) SystemSample
+            [{"cpu_pct": 28.5, "mem_pct": 32.8, "used_gb": 5.25, "total_gb": 16.0, "disk_pct": 0.7}],
+        ]
         
         client = ApiClient(api_key="test-key", account_id="123456")
-        result = client.fetch_infrastructure_metrics(app_id="9876543", days=30)
+        result = client.fetch_infrastructure_metrics(app_id="9876543", days=30, app_name="test-app")
         
         infra = result["infrastructure"]
-        self.assertAlmostEqual(infra["cpu_usage"], 0.755, places=3)
-        self.assertAlmostEqual(infra["memory_usage"], 0.623, places=3)
-        self.assertEqual(infra["disk_io"], 45.7)
+        self.assertAlmostEqual(infra["cpu_percent"], 28.5, places=1)
+        self.assertAlmostEqual(infra["memory_percent"], 32.8, places=1)
+        self.assertAlmostEqual(infra["memory_used_gb"], 5.25, places=2)
+        self.assertAlmostEqual(infra["memory_total_gb"], 16.0, places=1)
+        self.assertAlmostEqual(infra["disk_percent"], 0.7, places=1)
+        self.assertEqual(infra["host_name"], "WEBHOST01")
+        # Legacy keys for health calculator
+        self.assertAlmostEqual(infra["cpu_usage"], 0.285, places=3)
+        self.assertAlmostEqual(infra["memory_usage"], 0.328, places=3)
     
-    @patch.object(ApiClient, '_make_request')
-    def test_missing_data_uses_none(self, mock_request):
-        """Test that missing metrics use None."""
-        mock_request.return_value = {
-            "data": {
-                "actor": {
-                    "account": {
-                        "nrql": {
-                            "results": []
-                        }
-                    }
-                }
-            }
-        }
+    @patch.object(ApiClient, '_nrql_request')
+    def test_missing_data_uses_none(self, mock_nrql):
+        """Test that missing metrics use None when no host or SystemSample found."""
+        mock_nrql.side_effect = [
+            # 1) host discovery — empty
+            [{"uniques.host": []}],
+            # 2) CPU fallback — empty
+            [],
+            # 3) Memory fallback — empty
+            [],
+        ]
         
         client = ApiClient(api_key="test-key", account_id="123456")
         result = client.fetch_infrastructure_metrics(app_id="123", days=7)
@@ -1282,7 +1284,7 @@ class TestInfrastructureMetrics(unittest.TestCase):
         infra = result["infrastructure"]
         self.assertIsNone(infra["cpu_usage"])
         self.assertIsNone(infra["memory_usage"])
-        self.assertIsNone(infra["disk_io"])
+        self.assertIsNone(infra["cpu_percent"])
 
 
 class TestDatabaseMetrics(unittest.TestCase):
@@ -1415,3 +1417,80 @@ class TestTransactionMetrics(unittest.TestCase):
         self.assertIsInstance(endpoints, list)
         self.assertEqual(len(endpoints), 2)
         self.assertEqual(endpoints, ["/api/users", "/api/orders"])
+
+
+class TestSlowDbTransactions(unittest.TestCase):
+    """Test fetch_slow_db_transactions method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="test-key", account_id="123456")
+
+    def _nrql_response(self, results):
+        return {
+            "data": {
+                "actor": {
+                    "account": {
+                        "nrql": {
+                            "results": results
+                        }
+                    }
+                }
+            }
+        }
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_slow_db_transactions_success(self, mock_request):
+        """Returns sorted list of transactions with expected fields."""
+        mock_request.return_value = self._nrql_response([
+            {
+                "name": "WebTransaction/Controller/orders#show",
+                "transaction_type": "Web",
+                "avg_db_ms": 850.0,
+                "p95_db_ms": 1200.0,
+                "avg_db_calls": 12.5,
+                "call_count": 200,
+                "avg_total_ms": 950.0,
+            },
+            {
+                "name": "OtherTransaction/Background/workers/ProcessJob",
+                "transaction_type": "Other",
+                "avg_db_ms": 1500.0,
+                "p95_db_ms": 2200.0,
+                "avg_db_calls": 30.0,
+                "call_count": 50,
+                "avg_total_ms": 1600.0,
+            },
+        ])
+
+        client = self._make_client()
+        result = client.fetch_slow_db_transactions(app_id="999", days=1)
+
+        self.assertIn("slow_db_transactions", result)
+        rows = result["slow_db_transactions"]
+        self.assertEqual(len(rows), 2)
+        # Should be sorted descending by avg_db_ms
+        self.assertGreater(rows[0]["avg_db_ms"], rows[1]["avg_db_ms"])
+        # First row is the background transaction (highest avg_db_ms)
+        self.assertAlmostEqual(rows[0]["avg_db_ms"], 1500.0)
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_slow_db_transactions_empty(self, mock_request):
+        """Returns empty list when no transactions have databaseDuration > 0."""
+        mock_request.return_value = self._nrql_response([])
+
+        client = self._make_client()
+        result = client.fetch_slow_db_transactions(app_id="999", days=1)
+
+        self.assertEqual(result["slow_db_transactions"], [])
+
+    def test_invalid_app_id_raises(self):
+        """Empty app_id raises ValueError."""
+        client = self._make_client()
+        with self.assertRaises(ValueError):
+            client.fetch_slow_db_transactions(app_id="", days=1)
+
+    def test_invalid_days_raises(self):
+        """days value not in allowed list raises ValueError."""
+        client = self._make_client()
+        with self.assertRaises(ValueError):
+            client.fetch_slow_db_transactions(app_id="999", days=99)

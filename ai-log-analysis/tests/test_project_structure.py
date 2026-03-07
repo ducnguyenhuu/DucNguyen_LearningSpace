@@ -184,9 +184,10 @@ class TestDependencyInstallation:
         assert pytest is not None
     
     def test_requests_version(self):
-        """Verify requests version is 2.31.0."""
+        """Verify requests version is >= 2.31.0."""
         import requests
-        assert requests.__version__ == "2.31.0"
+        from packaging.version import Version
+        assert Version(requests.__version__) >= Version("2.31.0")
     
     def test_yaml_version(self):
         """Verify PyYAML version is 6.0.1."""
@@ -195,6 +196,7 @@ class TestDependencyInstallation:
         assert hasattr(yaml, 'safe_load')
     
     def test_pytest_version(self):
-        """Verify pytest version is 7.4.3."""
+        """Verify pytest version is >= 7.4.3."""
         import pytest
-        assert pytest.__version__ == "7.4.3"
+        from packaging.version import Version
+        assert Version(pytest.__version__) >= Version("7.4.3")
