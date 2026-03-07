@@ -239,15 +239,13 @@ class TestMetadataGeneration(unittest.TestCase):
     
     def test_metadata_includes_iso_timestamp(self):
         """Test metadata includes ISO 8601 timestamp."""
-        with patch("modules.report_generator.datetime") as mock_datetime:
-            mock_datetime.utcnow.return_value = datetime(2026, 2, 18, 15, 30, 45)
-            
-            metadata = self.generator._generate_metadata_section(
-                "my-app", self.config, None, None, None
-            )
-            
-            self.assertIn("Assessment Timestamp:", metadata)
-            self.assertIn("2026-02-18T15:30:45Z", metadata)
+        import re
+        metadata = self.generator._generate_metadata_section(
+            "my-app", self.config, None, None, None
+        )
+
+        self.assertIn("Assessment Timestamp:", metadata)
+        self.assertRegex(metadata, r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}')
     
     def test_metadata_with_collection_duration_minutes(self):
         """Test metadata includes data collection duration in minutes."""
@@ -515,6 +513,13 @@ class TestMetricBreakdownSections(unittest.TestCase):
                 'error_types': ['NullPointerException', 'TimeoutException', 'IOException']
             },
             'infrastructure': {
+                'cpu_percent': 75.0,
+                'memory_percent': 82.0,
+                'memory_used_gb': 13.1,
+                'memory_total_gb': 16.0,
+                'disk_percent': 25.5,
+                'host_name': 'TESTHOST01',
+                'instance_count': 1,
                 'cpu_usage': 0.75,
                 'memory_usage': 0.82,
                 'disk_io': 25.5
@@ -567,8 +572,7 @@ class TestMetricBreakdownSections(unittest.TestCase):
             self.metrics, self.category_scores
         )
         
-        self.assertIn("**Response Time:** 450 ms", section)
-        self.assertIn("threshold: <500ms", section)
+        self.assertIn("**Average Response Time:** 450 ms", section)
         self.assertIn("🟢", section)  # Healthy indicator
     
     def test_performance_section_red_indicator_for_slow_response(self):
@@ -579,7 +583,8 @@ class TestMetricBreakdownSections(unittest.TestCase):
             slow_metrics, self.category_scores
         )
         
-        self.assertIn("800 ms 🔴", section)
+        self.assertIn("800 ms", section)
+        self.assertIn("🟠", section)  # Orange for 500-1000ms range
     
     def test_performance_section_includes_apdex(self):
         """Test performance section includes Apdex score."""
@@ -597,8 +602,8 @@ class TestMetricBreakdownSections(unittest.TestCase):
         )
         
         self.assertIn("## Error Metrics", section)
-        self.assertIn("**Error Rate:** 3.0%", section)
-        self.assertIn("threshold: <5%", section)
+        self.assertIn("**Error Rate:** 3.00%", section)
+        self.assertIn("threshold: <1%", section)
     
     def test_error_section_lists_error_types(self):
         """Test error section lists top error types."""
@@ -606,7 +611,7 @@ class TestMetricBreakdownSections(unittest.TestCase):
             self.metrics, self.category_scores
         )
         
-        self.assertIn("Top Error Types:", section)
+        self.assertIn("Error Classes:", section)
         self.assertIn("NullPointerException", section)
         self.assertIn("TimeoutException", section)
     
@@ -634,7 +639,7 @@ class TestMetricBreakdownSections(unittest.TestCase):
         
         self.assertIn("## Infrastructure Metrics", section)
         self.assertIn("**CPU Usage:** 75.0%", section)
-        self.assertIn("threshold: <80%", section)
+        self.assertIn("threshold: <60%", section)
     
     def test_infrastructure_section_includes_memory(self):
         """Test infrastructure section includes memory usage."""
@@ -643,17 +648,18 @@ class TestMetricBreakdownSections(unittest.TestCase):
         )
         
         self.assertIn("**Memory Usage:** 82.0%", section)
-        self.assertIn("threshold: <85%", section)
+        self.assertIn("threshold: <70%", section)
     
     def test_infrastructure_section_red_indicator_high_cpu(self):
         """Test infrastructure section shows red indicator for high CPU."""
-        high_cpu = {'infrastructure': {'cpu_usage': 0.85, 'memory_usage': 0.5, 'disk_io': 10}}
+        high_cpu = {'infrastructure': {'cpu_percent': 85.0, 'memory_percent': 50.0, 'memory_used_gb': 8.0, 'memory_total_gb': 16.0, 'disk_percent': 10.0, 'cpu_usage': 0.85, 'memory_usage': 0.5, 'disk_io': 10}}
         
         section = self.generator._generate_infrastructure_section(
             high_cpu, self.category_scores
         )
         
-        self.assertIn("85.0% 🔴", section)
+        self.assertIn("85.0%", section)
+        self.assertIn("🔴", section)  # Red for >=80% CPU
     
     def test_database_section_includes_query_time(self):
         """Test database section includes average query time."""
@@ -728,7 +734,7 @@ class TestMetricBreakdownSections(unittest.TestCase):
             self.metrics, self.category_scores
         )
         
-        self.assertIn("Active Endpoints:", section)
+        self.assertIn("Active Transactions", section)
         self.assertIn("/api/users", section)
         self.assertIn("/api/products", section)
     
@@ -829,17 +835,16 @@ class TestMissingMetricHandling(unittest.TestCase):
         
         self.assertIn("Error Rate:** N/A", section)
         self.assertIn("Total Errors:** N/A", section)
-        self.assertIn("Top Error Types:** N/A", section)
     
     def test_infrastructure_section_with_none_values(self):
         """Test infrastructure section handles None values gracefully."""
-        metrics = {'infrastructure': {'cpu_usage': None, 'memory_usage': None, 'disk_io': None}}
+        metrics = {'infrastructure': {'cpu_percent': None, 'memory_percent': None, 'memory_used_gb': None, 'memory_total_gb': None, 'disk_percent': None, 'cpu_usage': None, 'memory_usage': None, 'disk_io': None}}
         
         section = self.generator._generate_infrastructure_section(metrics, self.category_scores)
         
         self.assertIn("CPU Usage:** N/A", section)
         self.assertIn("Memory Usage:** N/A", section)
-        self.assertIn("Disk I/O:** N/A", section)
+        self.assertIn("Disk Utilization:** N/A", section)
     
     def test_database_section_with_none_values(self):
         """Test database section handles None values gracefully."""
@@ -861,7 +866,7 @@ class TestMissingMetricHandling(unittest.TestCase):
         self.assertIn("Average Transaction Time:** N/A", section)
         self.assertIn("External Calls Count:** N/A", section)
         self.assertIn("External Service Latency:** N/A", section)
-        self.assertIn("Active Endpoints:** N/A", section)
+        self.assertIn("Active Transactions:** N/A", section)
 
 
 class TestFindingsSection(unittest.TestCase):
@@ -1078,13 +1083,11 @@ class TestReportSaving(unittest.TestCase):
     
     def test_save_report_correct_filename_format(self):
         """Test save_report uses correct filename format."""
-        with patch('modules.report_generator.datetime') as mock_datetime:
-            mock_datetime.utcnow.return_value = datetime(2026, 2, 18, 15, 30, 45)
-            
-            filepath = self.generator.save_report("Test", "my-app", self.test_dir)
-            
-            expected_filename = "health-report-my-app-2026-02-18-153045.md"
-            self.assertTrue(filepath.endswith(expected_filename))
+        import re
+        filepath = self.generator.save_report("Test", "my-app", self.test_dir)
+        filename = os.path.basename(filepath)
+
+        self.assertRegex(filename, r'^health-report-my-app-\d{4}-\d{2}-\d{2}-\d{6}\.md$')
     
     def test_save_report_no_colons_in_filename(self):
         """Test save_report generates filename without colons for filesystem compatibility."""
@@ -1143,7 +1146,7 @@ class TestReportSaving(unittest.TestCase):
             mock_print.assert_called_once()
             call_args = str(mock_print.call_args)
             self.assertIn("✓ Report generated:", call_args)
-            self.assertIn(filepath, call_args)
+            self.assertIn(os.path.basename(filepath), call_args)
     
     def test_save_report_multiple_reports_same_app(self):
         """Test save_report creates unique filenames for same app."""

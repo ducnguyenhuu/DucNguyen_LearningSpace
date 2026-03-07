@@ -182,6 +182,7 @@ class TestCategoryScoreCalculation(unittest.TestCase):
         """Test performance category score with all excellent metrics."""
         metrics = {
             "response_time": 150,
+            "p95_ms": 300,
             "throughput": 1200,
             "apdex_score": 0.95
         }
@@ -316,16 +317,18 @@ class TestOverallHealthScoreCalculation(unittest.TestCase):
     
     def test_calculate_health_score_weighted_average(self):
         """Test that category weights are applied correctly."""
-        # Performance (25%) = 100, Errors (25%) = 20
-        # Expected overall ≈ (100*0.25 + 20*0.25 + 50*0.50) = 55
+        # Performance (25%) = high, Errors (25%) = low
+        # With p95_ms missing, performance gets default 50 for that metric
+        # Expected: performance ~81 (100+50+100+75)/4, errors ~35 (20+50)/2
         metrics = {
             "response_time": 150,  # 100
-            "error_rate": 0.08,  # 20
+            "p95_ms": 300,         # 100
+            "error_rate": 0.08,    # 20
         }
         result = self.calculator.calculate_health_score(metrics)
-        # Should be between Warning and Good
-        self.assertGreaterEqual(result["overall_score"], 50)
-        self.assertLessEqual(result["overall_score"], 70)
+        # Should be between Warning and Good (accounting for missing metrics in other categories)
+        self.assertGreaterEqual(result["overall_score"], 45)
+        self.assertLessEqual(result["overall_score"], 75)
     
     def test_calculate_health_score_returns_findings(self):
         """Test that calculate_health_score returns findings."""

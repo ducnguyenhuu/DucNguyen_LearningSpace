@@ -140,9 +140,17 @@ class HealthCalculator:
         ]
     }
     
+    # P95 response time thresholds (milliseconds, lower is better)
+    THRESHOLDS["p95_ms"] = [
+        (500, 100),    # < 500ms = 100 points
+        (1000, 70),    # 500-1000ms = 70 points
+        (2000, 40),    # 1000-2000ms = 40 points
+        (float('inf'), 20)  # > 2000ms = 20 points
+    ]
+    
     # Category to metric mapping
     CATEGORY_METRICS = {
-        "performance": ["response_time", "throughput", "apdex_score"],
+        "performance": ["response_time", "p95_ms", "throughput", "apdex_score"],
         "errors": ["error_rate", "error_count"],
         "infrastructure": ["cpu_usage", "memory_usage", "disk_io"],
         "database": ["query_time", "slow_queries", "connection_pool_usage", "database_calls"],
@@ -386,6 +394,41 @@ class HealthCalculator:
                 "description": f"Apdex score at {apdex_score:.2f} indicates poor user satisfaction (threshold: 0.5)"
             })
         
+        # P95 response time findings
+        p95_ms = metrics.get("p95_ms")
+        if p95_ms is not None:
+            if p95_ms > 2000:
+                findings.append({
+                    "category": "performance",
+                    "severity": "Critical",
+                    "issue": "Very high P95 response time",
+                    "metric": "p95_ms",
+                    "value": p95_ms,
+                    "description": f"P95 response time at {p95_ms:.0f}ms - 5% of requests take over 2 seconds"
+                })
+            elif p95_ms > 1000:
+                findings.append({
+                    "category": "performance",
+                    "severity": "Warning",
+                    "issue": "Elevated P95 response time",
+                    "metric": "p95_ms",
+                    "value": p95_ms,
+                    "description": f"P95 response time at {p95_ms:.0f}ms exceeds 1000ms threshold"
+                })
+        
+        # High variance detection (P95 >> average)
+        if p95_ms is not None and response_time is not None and response_time > 0:
+            variance_ratio = p95_ms / response_time
+            if variance_ratio > 5:
+                findings.append({
+                    "category": "performance",
+                    "severity": "Warning",
+                    "issue": "High response time variance",
+                    "metric": "p95_ms",
+                    "value": variance_ratio,
+                    "description": f"P95 ({p95_ms:.0f}ms) is {variance_ratio:.1f}x the average ({response_time:.0f}ms) - indicates inconsistent performance"
+                })
+        
         # Error findings
         error_rate = metrics.get("error_rate")
         if error_rate is not None:
@@ -420,25 +463,26 @@ class HealthCalculator:
             })
         
         # Infrastructure findings
+        # cpu_usage is 0.0-1.0 (fraction), e.g. 0.08 = 8%
         cpu_usage = metrics.get("cpu_usage")
         if cpu_usage is not None:
-            if cpu_usage > 0.85:  # 85%
+            if cpu_usage > 0.85:
                 findings.append({
                     "category": "infrastructure",
                     "severity": "Critical",
                     "issue": "Very high CPU utilization",
                     "metric": "cpu_usage",
                     "value": cpu_usage,
-                    "description": f"CPU at {cpu_usage*100:.0f}% (threshold: 85%)"
+                    "description": f"CPU at {cpu_usage*100:.1f}% (threshold: 85%)"
                 })
-            elif cpu_usage > 0.75:  # 75%
+            elif cpu_usage > 0.60:
                 findings.append({
                     "category": "infrastructure",
                     "severity": "Warning",
-                    "issue": "High CPU utilization",
+                    "issue": "Elevated CPU utilization",
                     "metric": "cpu_usage",
                     "value": cpu_usage,
-                    "description": f"CPU at {cpu_usage*100:.0f}% (threshold: 75%)"
+                    "description": f"CPU at {cpu_usage*100:.1f}% (threshold: 60%)"
                 })
         
         memory_usage = metrics.get("memory_usage")
