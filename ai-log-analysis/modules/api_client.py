@@ -1217,10 +1217,14 @@ class ApiClient:
             
             logs = []
             for result in results:
+                message = str(result.get('message', ''))[:2000]
+                # Strip base64-encoded blobs (e.g. PDF labels) that add noise
+                if '"labelImage":"' in message:
+                    message = message[:message.index('"labelImage":"')] + '"labelImage":"[base64 removed]"}'
                 logs.append({
                     'timestamp': str(result.get('timestamp', '')),
                     'level': str(result.get('level', 'UNKNOWN')),
-                    'message': str(result.get('message', ''))[:2000],  # Truncate very long messages
+                    'message': message,
                     'error_class': str(result.get('error.class', '')) if result.get('error.class') else None,
                     'error_message': str(result.get('error.message', '')) if result.get('error.message') else None,
                     'error_stack': str(result.get('error.stack', ''))[:3000] if result.get('error.stack') else None
@@ -1228,7 +1232,7 @@ class ApiClient:
             
             timestamp = datetime.now(_EST).isoformat()
             self._logger.info(f"[INFO] [api_client] Fetched {len(logs)} log entries for app_id={app_id}")
-            return {'app_id': app_id, 'timestamp': timestamp, 'logs': logs}
+            return {'app_id': app_id, 'timestamp': timestamp, 'application_logs': logs}
         except Exception as e:
             self._logger.error(f"[ERROR] [api_client] Failed to fetch application logs: {e}. app_id={app_id}")
             raise
@@ -1252,15 +1256,15 @@ class ApiClient:
             self._logger.debug(f"[DEBUG] [api_client] Fetching log volume: app_id={app_id}, days={days}")
             results = self._nrql_request(nrql_query, "log_volume")
             
-            volume_by_level = {}
+            log_volume = []
             for result in results:
                 level = str(result.get('level', 'UNKNOWN'))
                 count = self._safe_int(result.get('count')) or 0
-                volume_by_level[level] = count
+                log_volume.append({'level': level, 'count': count})
             
             timestamp = datetime.now(_EST).isoformat()
-            self._logger.info(f"[INFO] [api_client] Fetched log volume for app_id={app_id}: {volume_by_level}")
-            return {'app_id': app_id, 'timestamp': timestamp, 'volume_by_level': volume_by_level}
+            self._logger.info(f"[INFO] [api_client] Fetched log volume for app_id={app_id}: {log_volume}")
+            return {'app_id': app_id, 'timestamp': timestamp, 'log_volume': log_volume}
         except Exception as e:
             self._logger.error(f"[ERROR] [api_client] Failed to fetch log volume: {e}. app_id={app_id}")
             raise

@@ -716,5 +716,132 @@ class TestIssueFindingsDetection(unittest.TestCase):
         self.assertTrue(any("increase" in f["description"].lower() for f in pool_findings))
 
 
+class TestHealthCalculatorEdgeCases(unittest.TestCase):
+    """Test edge cases for coverage of missing lines."""
+
+    def setUp(self):
+        self.calculator = HealthCalculator()
+
+    def test_unknown_category_returns_default(self):
+        """Line 228: Unknown category returns 50."""
+        score = self.calculator._calculate_category_score("nonexistent_category", {})
+        self.assertEqual(score, 50)
+
+    def test_throughput_below_all_thresholds(self):
+        """Line 205/211: throughput value below all thresholds returns lowest score."""
+        score = self.calculator._normalize_metric("throughput", 0)
+        self.assertEqual(score, 20)
+
+    def test_normalize_metric_no_threshold_defined(self):
+        """Line 191: Unknown metric with no threshold returns 50."""
+        score = self.calculator._normalize_metric("totally_unknown_metric", 42)
+        self.assertEqual(score, 50)
+
+    def test_poor_apdex_finding(self):
+        """Line 401: Apdex < 0.5 triggers critical finding."""
+        metrics = {"apdex_score": 0.3}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        apdex = [f for f in findings if f["metric"] == "apdex_score"]
+        self.assertTrue(len(apdex) > 0)
+        self.assertEqual(apdex[0]["severity"], "Critical")
+
+    def test_critical_p95_finding(self):
+        """Line 410: P95 > 2000ms triggers critical finding."""
+        metrics = {"p95_ms": 3000}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        p95 = [f for f in findings if f["metric"] == "p95_ms" and f["severity"] == "Critical"]
+        self.assertTrue(len(p95) > 0)
+
+    def test_warning_p95_finding(self):
+        """Line 423: P95 between 1000-2000 triggers warning finding."""
+        metrics = {"p95_ms": 1500}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        p95_warn = [f for f in findings if f["metric"] == "p95_ms" and f["severity"] == "Warning"]
+        self.assertTrue(len(p95_warn) > 0)
+
+    def test_high_p95_variance(self):
+        """Line 423 area: High variance ratio (P95 >> avg) triggers warning."""
+        metrics = {"response_time": 100, "p95_ms": 600}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        variance = [f for f in findings if "variance" in f["issue"].lower()]
+        self.assertTrue(len(variance) > 0)
+
+    def test_warning_memory_usage(self):
+        """Line 500: Memory 80-90% triggers warning."""
+        metrics = {"memory_usage": 0.85}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        mem = [f for f in findings if f["metric"] == "memory_usage" and f["severity"] == "Warning"]
+        self.assertTrue(len(mem) > 0)
+
+    def test_disk_io_finding(self):
+        """Line 565 area: High disk I/O triggers warning."""
+        metrics = {"disk_io": 250}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        disk = [f for f in findings if f["metric"] == "disk_io"]
+        self.assertTrue(len(disk) > 0)
+
+    def test_critical_query_time(self):
+        """query_time > 200 triggers critical."""
+        metrics = {"query_time": 250}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        qt = [f for f in findings if f["metric"] == "query_time" and f["severity"] == "Critical"]
+        self.assertTrue(len(qt) > 0)
+
+    def test_warning_query_time(self):
+        """query_time 100-200 triggers warning."""
+        metrics = {"query_time": 150}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        qt = [f for f in findings if f["metric"] == "query_time" and f["severity"] == "Warning"]
+        self.assertTrue(len(qt) > 0)
+
+    def test_slow_queries_finding(self):
+        """slow_queries > 50 triggers warning."""
+        metrics = {"slow_queries": 60}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        sq = [f for f in findings if f["metric"] == "slow_queries"]
+        self.assertTrue(len(sq) > 0)
+
+    def test_warning_connection_pool(self):
+        """connection_pool_usage 75-90% triggers warning."""
+        metrics = {"connection_pool_usage": 0.80}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        pool = [f for f in findings if f["metric"] == "connection_pool_usage" and f["severity"] == "Warning"]
+        self.assertTrue(len(pool) > 0)
+
+    def test_error_rate_info_finding(self):
+        """error_rate 3-5% triggers info."""
+        metrics = {"error_rate": 0.04}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        err = [f for f in findings if f["metric"] == "error_rate" and f["severity"] == "Info"]
+        self.assertTrue(len(err) > 0)
+
+    def test_error_count_finding(self):
+        """error_count > 100 triggers warning."""
+        metrics = {"error_count": 200}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        ec = [f for f in findings if f["metric"] == "error_count"]
+        self.assertTrue(len(ec) > 0)
+
+    def test_warning_cpu_usage(self):
+        """cpu_usage 60-85% triggers warning."""
+        metrics = {"cpu_usage": 0.70}
+        result = self.calculator.calculate_health_score(metrics)
+        findings = result["findings"]
+        cpu = [f for f in findings if f["metric"] == "cpu_usage" and f["severity"] == "Warning"]
+        self.assertTrue(len(cpu) > 0)
+
+
 if __name__ == "__main__":
     unittest.main()

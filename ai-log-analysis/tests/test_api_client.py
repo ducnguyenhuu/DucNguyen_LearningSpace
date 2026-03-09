@@ -1494,3 +1494,463 @@ class TestSlowDbTransactions(unittest.TestCase):
         client = self._make_client()
         with self.assertRaises(ValueError):
             client.fetch_slow_db_transactions(app_id="999", days=99)
+
+
+class TestSafeConversionEdgeCases(unittest.TestCase):
+    """Test _safe_float and _safe_int with non-convertible values."""
+
+    def setUp(self):
+        self.client = ApiClient(api_key="k", account_id="1")
+
+    def test_safe_float_invalid_string(self):
+        self.assertIsNone(self.client._safe_float("abc"))
+
+    def test_safe_int_invalid_string(self):
+        self.assertIsNone(self.client._safe_int("abc"))
+
+    def test_safe_float_none(self):
+        self.assertIsNone(self.client._safe_float(None))
+
+    def test_safe_int_none(self):
+        self.assertIsNone(self.client._safe_int(None))
+
+
+class TestNrqlRequestHelper(unittest.TestCase):
+    """Test _nrql_request helper and _since_iso."""
+
+    def setUp(self):
+        self.client = ApiClient(api_key="k", account_id="1")
+
+    @patch.object(ApiClient, '_make_request')
+    def test_nrql_request_returns_results(self, mock_req):
+        mock_req.return_value = {
+            "data": {"actor": {"account": {"nrql": {"results": [{"count": 5}]}}}}
+        }
+        results = self.client._nrql_request("SELECT count(*) FROM Transaction", "test")
+        self.assertEqual(results, [{"count": 5}])
+
+    @patch.object(ApiClient, '_make_request')
+    def test_nrql_request_empty_response(self, mock_req):
+        mock_req.return_value = {"data": {}}
+        results = self.client._nrql_request("SELECT 1", "test")
+        self.assertEqual(results, [])
+
+    def test_since_iso_format(self):
+        result = self.client._since_iso(7)
+        self.assertRegex(result, r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}')
+
+
+class TestFetchErrorDetails(unittest.TestCase):
+    """Test fetch_error_details method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="k", account_id="1")
+
+    def _nrql_response(self, results):
+        return {"data": {"actor": {"account": {"nrql": {"results": results}}}}}
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_error_details_success(self, mock_req):
+        mock_req.return_value = self._nrql_response([
+            {"error.class": "NullReferenceException", "count": 42, "message": "Object ref", "stack_trace": "at Foo.Bar()"}
+        ])
+        result = self._make_client().fetch_error_details("123", 1)
+        self.assertIn("error_details", result)
+        self.assertEqual(len(result["error_details"]), 1)
+        self.assertEqual(result["error_details"][0]["error_class"], "NullReferenceException")
+        self.assertEqual(result["error_details"][0]["count"], 42)
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_error_details_empty(self, mock_req):
+        mock_req.return_value = self._nrql_response([])
+        result = self._make_client().fetch_error_details("123", 1)
+        self.assertEqual(result["error_details"], [])
+
+    def test_fetch_error_details_invalid_app_id(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_error_details("", 1)
+
+    def test_fetch_error_details_invalid_days(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_error_details("123", 5)
+
+    @patch.object(ApiClient, '_make_request', side_effect=Exception("API fail"))
+    def test_fetch_error_details_propagates_exception(self, mock_req):
+        with self.assertRaises(Exception):
+            self._make_client().fetch_error_details("123", 1)
+
+
+class TestFetchSlowTransactions(unittest.TestCase):
+    """Test fetch_slow_transactions method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="k", account_id="1")
+
+    def _nrql_response(self, results):
+        return {"data": {"actor": {"account": {"nrql": {"results": results}}}}}
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_slow_transactions_sorted(self, mock_req):
+        mock_req.return_value = self._nrql_response([
+            {"name": "fast", "transaction_type": "Web", "avg_duration_ms": 100, "p95_ms": 200, "call_count": 10, "db_time_ms": 5, "db_call_count": 2, "external_time_ms": 10, "external_call_count": 1},
+            {"name": "slow", "transaction_type": "Web", "avg_duration_ms": 500, "p95_ms": 900, "call_count": 5, "db_time_ms": 200, "db_call_count": 10, "external_time_ms": 50, "external_call_count": 3},
+        ])
+        result = self._make_client().fetch_slow_transactions("123", 1)
+        txns = result["slow_transactions"]
+        self.assertEqual(len(txns), 2)
+        self.assertGreater(txns[0]["avg_duration_ms"], txns[1]["avg_duration_ms"])
+
+    def test_fetch_slow_transactions_invalid_app_id(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_slow_transactions("", 1)
+
+    def test_fetch_slow_transactions_invalid_days(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_slow_transactions("123", 2)
+
+
+class TestFetchDatabaseDetails(unittest.TestCase):
+    """Test fetch_database_details method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="k", account_id="1")
+
+    def _nrql_response(self, results):
+        return {"data": {"actor": {"account": {"nrql": {"results": results}}}}}
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_database_details_success(self, mock_req):
+        mock_req.return_value = self._nrql_response([
+            {"facet": ["MSSQL", "SELECT", "Users"], "avg_duration_ms": 50, "p95_ms": 120, "call_count": 1000, "total_time_ms": 50000}
+        ])
+        result = self._make_client().fetch_database_details("123", 1)
+        self.assertEqual(len(result["database_details"]), 1)
+        self.assertEqual(result["database_details"][0]["datastore_type"], "MSSQL")
+        self.assertEqual(result["database_details"][0]["operation"], "SELECT")
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_database_details_empty_facet(self, mock_req):
+        mock_req.return_value = self._nrql_response([
+            {"facet": [], "avg_duration_ms": 10, "p95_ms": 20, "call_count": 5, "total_time_ms": 50}
+        ])
+        result = self._make_client().fetch_database_details("123", 1)
+        self.assertEqual(result["database_details"][0]["datastore_type"], "Unknown")
+
+    def test_fetch_database_details_invalid_app_id(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_database_details("  ", 1)
+
+
+class TestFetchExternalServices(unittest.TestCase):
+    """Test fetch_external_services method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="k", account_id="1")
+
+    def _nrql_response(self, results):
+        return {"data": {"actor": {"account": {"nrql": {"results": results}}}}}
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_external_services_success(self, mock_req):
+        mock_req.return_value = self._nrql_response([
+            {"host": "api.example.com", "avg_duration_ms": 120.5, "call_count": 500, "p95_ms": 350.0}
+        ])
+        result = self._make_client().fetch_external_services("123", 1)
+        self.assertEqual(len(result["external_services"]), 1)
+        self.assertEqual(result["external_services"][0]["host"], "api.example.com")
+
+    def test_fetch_external_services_invalid_app_id(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_external_services("", 1)
+
+    def test_fetch_external_services_invalid_days(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_external_services("123", 99)
+
+
+class TestFetchApplicationLogs(unittest.TestCase):
+    """Test fetch_application_logs method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="k", account_id="1")
+
+    def _nrql_response(self, results):
+        return {"data": {"actor": {"account": {"nrql": {"results": results}}}}}
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_application_logs_success(self, mock_req):
+        mock_req.return_value = self._nrql_response([
+            {"message": "NullRef at line 42", "level": "ERROR", "timestamp": "2025-01-01T00:00:00",
+             "error.class": "NullRef", "error.message": "Object ref", "error.stack": "stack trace"}
+        ])
+        result = self._make_client().fetch_application_logs("123", 1)
+        self.assertEqual(len(result["application_logs"]), 1)
+        self.assertEqual(result["application_logs"][0]["level"], "ERROR")
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_application_logs_strips_base64_blobs(self, mock_req):
+        msg = 'Processing label: {"labelImage":"' + 'A' * 500 + '"}'
+        mock_req.return_value = self._nrql_response([
+            {"message": msg, "level": "INFO", "timestamp": "t"}
+        ])
+        result = self._make_client().fetch_application_logs("123", 1)
+        self.assertIn("[base64 removed]", result["application_logs"][0]["message"])
+
+    def test_fetch_application_logs_invalid_app_id(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_application_logs("", 1)
+
+    @patch.object(ApiClient, '_make_request', side_effect=Exception("fail"))
+    def test_fetch_application_logs_propagates_exception(self, mock_req):
+        with self.assertRaises(Exception):
+            self._make_client().fetch_application_logs("123", 1)
+
+
+class TestFetchLogVolume(unittest.TestCase):
+    """Test fetch_log_volume method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="k", account_id="1")
+
+    def _nrql_response(self, results):
+        return {"data": {"actor": {"account": {"nrql": {"results": results}}}}}
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_log_volume_success(self, mock_req):
+        mock_req.return_value = self._nrql_response([
+            {"level": "ERROR", "count": 100},
+            {"level": "INFO", "count": 5000}
+        ])
+        result = self._make_client().fetch_log_volume("123", 1)
+        self.assertEqual(len(result["log_volume"]), 2)
+
+    def test_fetch_log_volume_invalid_app_id(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_log_volume("", 1)
+
+    def test_fetch_log_volume_invalid_days(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_log_volume("123", 100)
+
+
+class TestFetchAlerts(unittest.TestCase):
+    """Test fetch_alerts method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="k", account_id="1")
+
+    def _nrql_response(self, results):
+        return {"data": {"actor": {"account": {"nrql": {"results": results}}}}}
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_alerts_success(self, mock_req):
+        mock_req.return_value = self._nrql_response([
+            {"title": "High CPU", "priority": "CRITICAL", "state": "closed",
+             "conditionName": "cpu > 80", "policyName": "default",
+             "openTime": 1000, "closeTime": 2000, "durationSeconds": 1000}
+        ])
+        result = self._make_client().fetch_alerts("123", 1)
+        self.assertEqual(len(result["alerts"]), 1)
+        self.assertEqual(result["alerts"][0]["priority"], "CRITICAL")
+
+    def test_fetch_alerts_invalid_app_id(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_alerts("", 1)
+
+    @patch.object(ApiClient, '_make_request', side_effect=Exception("fail"))
+    def test_fetch_alerts_propagates_exception(self, mock_req):
+        with self.assertRaises(Exception):
+            self._make_client().fetch_alerts("123", 1)
+
+
+class TestFetchHourlyTrends(unittest.TestCase):
+    """Test fetch_hourly_trends method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="k", account_id="1")
+
+    def _nrql_response(self, results):
+        return {"data": {"actor": {"account": {"nrql": {"results": results}}}}}
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_hourly_trends_success(self, mock_req):
+        mock_req.return_value = self._nrql_response([
+            {"beginTimeSeconds": 1710000000, "endTimeSeconds": 1710003600,
+             "avg_response_ms": 250.5, "throughput_rpm": 100.0, "error_rate": 0.02}
+        ])
+        result = self._make_client().fetch_hourly_trends("123", 1)
+        self.assertEqual(len(result["hourly_trends"]), 1)
+        self.assertAlmostEqual(result["hourly_trends"][0]["avg_response_ms"], 250.5)
+
+    def test_fetch_hourly_trends_invalid_app_id(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_hourly_trends("", 1)
+
+    def test_fetch_hourly_trends_invalid_days(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_hourly_trends("123", 60)
+
+
+class TestFetchDeployments(unittest.TestCase):
+    """Test fetch_deployments method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="k", account_id="1")
+
+    def _nrql_response(self, results):
+        return {"data": {"actor": {"account": {"nrql": {"results": results}}}}}
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_deployments_success(self, mock_req):
+        mock_req.return_value = self._nrql_response([
+            {"timestamp": 1710000000, "revision": "abc123", "description": "hotfix",
+             "user": "dev", "changelog": "fix bug"}
+        ])
+        result = self._make_client().fetch_deployments("123", 1)
+        self.assertEqual(len(result["deployments"]), 1)
+        self.assertEqual(result["deployments"][0]["revision"], "abc123")
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_deployments_with_app_name(self, mock_req):
+        mock_req.return_value = self._nrql_response([])
+        result = self._make_client().fetch_deployments("123", 1, app_name="MyApp")
+        self.assertEqual(result["deployments"], [])
+
+    def test_fetch_deployments_invalid_app_id(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_deployments("", 1)
+
+
+class TestFetchBaselines(unittest.TestCase):
+    """Test fetch_baselines method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="k", account_id="1")
+
+    def _nrql_response(self, results):
+        return {"data": {"actor": {"account": {"nrql": {"results": results}}}}}
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_baselines_success(self, mock_req):
+        mock_req.return_value = self._nrql_response([
+            {"baseline_response_ms": 300.0, "baseline_throughput_rpm": 500.0,
+             "baseline_error_rate": 0.01, "baseline_total_requests": 100000}
+        ])
+        result = self._make_client().fetch_baselines("123")
+        b = result["baselines"]
+        self.assertAlmostEqual(b["response_time_7d_avg_ms"], 300.0)
+        self.assertAlmostEqual(b["throughput_7d_avg_rpm"], 500.0)
+
+    @patch.object(ApiClient, '_make_request')
+    def test_fetch_baselines_no_data(self, mock_req):
+        mock_req.return_value = self._nrql_response([])
+        result = self._make_client().fetch_baselines("123")
+        b = result["baselines"]
+        self.assertIsNone(b["response_time_7d_avg_ms"])
+        self.assertIsNone(b["throughput_7d_avg_rpm"])
+
+    def test_fetch_baselines_invalid_app_id(self):
+        with self.assertRaises(ValueError):
+            self._make_client().fetch_baselines("")
+
+
+class TestCollectAllMetrics(unittest.TestCase):
+    """Test collect_all_metrics orchestrator method."""
+
+    def _make_client(self):
+        return ApiClient(api_key="k", account_id="1")
+
+    @patch.object(ApiClient, 'save_to_cache', return_value="data/test.json")
+    @patch.object(ApiClient, 'load_from_cache', return_value=None)
+    @patch.object(ApiClient, 'fetch_deployments', return_value={"deployments": []})
+    @patch.object(ApiClient, 'fetch_baselines', return_value={"baselines": {}})
+    @patch.object(ApiClient, 'fetch_hourly_trends', return_value={"hourly_trends": []})
+    @patch.object(ApiClient, 'fetch_alerts', return_value={"alerts": []})
+    @patch.object(ApiClient, 'fetch_log_volume', return_value={"log_volume": []})
+    @patch.object(ApiClient, 'fetch_application_logs', return_value={"application_logs": []})
+    @patch.object(ApiClient, 'fetch_external_services', return_value={"external_services": []})
+    @patch.object(ApiClient, 'fetch_database_details', return_value={"database_details": []})
+    @patch.object(ApiClient, 'fetch_slow_transactions', return_value={"slow_transactions": []})
+    @patch.object(ApiClient, 'fetch_error_details', return_value={"error_details": []})
+    @patch.object(ApiClient, 'fetch_transaction_metrics', return_value={"transactions": {}})
+    @patch.object(ApiClient, 'fetch_database_metrics', return_value={"database": {}})
+    @patch.object(ApiClient, 'fetch_infrastructure_metrics', return_value={"infrastructure": {}})
+    @patch.object(ApiClient, 'fetch_error_metrics', return_value={"errors": {}})
+    @patch.object(ApiClient, 'fetch_performance_metrics', return_value={"performance": {}})
+    def test_collect_all_metrics_calls_all_fetches(self, *mocks):
+        result = self._make_client().collect_all_metrics("123", 1, app_name="app")
+        self.assertIn("performance", result)
+        self.assertIn("errors", result)
+        self.assertIn("infrastructure", result)
+        self.assertIn("database", result)
+        self.assertIn("transactions", result)
+        self.assertIn("error_details", result)
+        self.assertIn("slow_transactions", result)
+        self.assertIn("database_details", result)
+        self.assertIn("external_services", result)
+        self.assertIn("application_logs", result)
+        self.assertIn("log_volume", result)
+        self.assertIn("alerts", result)
+        self.assertIn("hourly_trends", result)
+        self.assertIn("baselines", result)
+        self.assertIn("deployments", result)
+
+    @patch.object(ApiClient, 'load_from_cache')
+    def test_collect_all_metrics_uses_cache(self, mock_cache):
+        cached = {"app_id": "123", "cached": True}
+        mock_cache.return_value = cached
+        result = self._make_client().collect_all_metrics("123", 1)
+        self.assertEqual(result, cached)
+
+    def test_collect_all_metrics_invalid_app_id(self):
+        with self.assertRaises(ValueError):
+            self._make_client().collect_all_metrics("", 1)
+
+    def test_collect_all_metrics_invalid_days(self):
+        with self.assertRaises(ValueError):
+            self._make_client().collect_all_metrics("123", 99)
+
+
+class TestCacheMethods(unittest.TestCase):
+    """Test save_to_cache, load_from_cache, cleanup_old_cache."""
+
+    def setUp(self):
+        import tempfile
+        self.client = ApiClient(api_key="k", account_id="1")
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    @patch('modules.api_client.os.makedirs')
+    @patch('builtins.open', unittest.mock.mock_open())
+    def test_save_to_cache_returns_path(self, mock_makedirs):
+        import json
+        path = self.client.save_to_cache({"test": 1}, "myapp")
+        self.assertIn("myapp", path)
+        self.assertTrue(path.endswith(".json"))
+
+    @patch('modules.api_client.glob.glob', return_value=[])
+    def test_load_from_cache_no_files(self, mock_glob):
+        result = self.client.load_from_cache("myapp")
+        self.assertIsNone(result)
+
+    @patch('modules.api_client.os.path.exists', return_value=False)
+    def test_load_from_cache_no_data_dir(self, mock_exists):
+        result = self.client.load_from_cache("myapp")
+        self.assertIsNone(result)
+
+    @patch('modules.api_client.os.path.exists', return_value=False)
+    def test_cleanup_old_cache_no_dir(self, mock_exists):
+        result = self.client.cleanup_old_cache()
+        self.assertEqual(result, 0)
+
+    @patch('modules.api_client.os.remove')
+    @patch('modules.api_client.os.path.getmtime', return_value=0)
+    @patch('modules.api_client.glob.glob', return_value=["data/old.json"])
+    @patch('modules.api_client.os.path.exists', return_value=True)
+    def test_cleanup_old_cache_removes_old_files(self, mock_exists, mock_glob, mock_mtime, mock_remove):
+        result = self.client.cleanup_old_cache(retention_days=1)
+        self.assertEqual(result, 1)
+        mock_remove.assert_called_once()

@@ -1171,5 +1171,408 @@ class TestReportSaving(unittest.TestCase):
         self.assertIn("my-app-123", filepath)
 
 
+class TestSlowTransactionsSection(unittest.TestCase):
+    """Test _generate_slow_transactions_section."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+
+    def test_empty_slow_transactions(self):
+        section = self.generator._generate_slow_transactions_section({})
+        self.assertEqual(section, "")
+
+    def test_slow_transactions_table(self):
+        metrics = {"slow_transactions": {"slow_transactions": [
+            {"name": "WebTxn/Controller/orders", "transaction_type": "Web",
+             "avg_duration_ms": 1200.0, "p95_ms": 2000.0, "call_count": 50,
+             "db_time_ms": 300.0, "external_time_ms": 100.0},
+            {"name": "OtherTransaction/bg/job", "transaction_type": "Other",
+             "avg_duration_ms": 400.0, "p95_ms": 600.0, "call_count": 200,
+             "db_time_ms": None, "external_time_ms": None},
+        ]}}
+        section = self.generator._generate_slow_transactions_section(metrics)
+        self.assertIn("Slow Transactions", section)
+        self.assertIn("orders", section)
+        self.assertIn("1200", section)
+        self.assertIn("bg/job", section)
+
+    def test_slow_transactions_long_name_truncated(self):
+        metrics = {"slow_transactions": {"slow_transactions": [
+            {"name": "A" * 80, "transaction_type": "Web",
+             "avg_duration_ms": 100, "p95_ms": 200, "call_count": 1,
+             "db_time_ms": None, "external_time_ms": None},
+        ]}}
+        section = self.generator._generate_slow_transactions_section(metrics)
+        self.assertIn("...", section)
+
+
+class TestSlowDbTransactionsSection(unittest.TestCase):
+    """Test _generate_slow_db_transactions_section."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+
+    def test_empty_returns_empty(self):
+        section = self.generator._generate_slow_db_transactions_section({})
+        self.assertEqual(section, "")
+
+    def test_slow_db_transactions_table(self):
+        metrics = {"slow_db_transactions": {"slow_db_transactions": [
+            {"name": "WebTxn/Controller/users", "transaction_type": "Web",
+             "avg_db_ms": 800.0, "p95_db_ms": 1500.0, "avg_db_calls": 15.0,
+             "call_count": 100, "avg_total_ms": 1000.0},
+        ]}}
+        section = self.generator._generate_slow_db_transactions_section(metrics)
+        self.assertIn("Slow Database Transactions", section)
+        self.assertIn("800", section)
+        self.assertIn("80%", section)  # 800/1000 = 80%
+
+    def test_slow_db_transactions_long_name(self):
+        metrics = {"slow_db_transactions": {"slow_db_transactions": [
+            {"name": "X" * 80, "transaction_type": "Other",
+             "avg_db_ms": 100, "p95_db_ms": 200, "avg_db_calls": 5,
+             "call_count": 10, "avg_total_ms": 500},
+        ]}}
+        section = self.generator._generate_slow_db_transactions_section(metrics)
+        self.assertIn("...", section)
+
+
+class TestExternalServicesSection(unittest.TestCase):
+    """Test _generate_external_services_section."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+
+    def test_empty_returns_empty(self):
+        section = self.generator._generate_external_services_section({})
+        self.assertEqual(section, "")
+
+    def test_external_services_table(self):
+        metrics = {"external_services": {"external_services": [
+            {"host": "api.stripe.com", "avg_duration_ms": 600.0, "p95_ms": 1200.0, "call_count": 300},
+            {"host": "api.twilio.com", "avg_duration_ms": 80.0, "p95_ms": 150.0, "call_count": 50},
+        ]}}
+        section = self.generator._generate_external_services_section(metrics)
+        self.assertIn("External Service Dependencies", section)
+        self.assertIn("api.stripe.com", section)
+        self.assertIn("600", section)
+        self.assertIn("🔴", section)  # >500ms indicator
+
+
+class TestLogsSection(unittest.TestCase):
+    """Test _generate_logs_section."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+
+    def test_no_logs_shows_not_available(self):
+        section = self.generator._generate_logs_section({})
+        self.assertIn("No log data available", section)
+
+    def test_log_volume_table(self):
+        metrics = {"log_volume": {"log_volume": [
+            {"level": "ERROR", "count": 100},
+            {"level": "INFO", "count": 5000},
+        ]}}
+        section = self.generator._generate_logs_section(metrics)
+        self.assertIn("Log Volume by Level", section)
+        self.assertIn("ERROR", section)
+        self.assertIn("🔴", section)
+
+    def test_application_logs_entries(self):
+        metrics = {"application_logs": {"application_logs": [
+            {"timestamp": "2025-01-01T00:00:00", "level": "ERROR", "message": "NullRef exception"},
+            {"timestamp": "2025-01-01T01:00:00", "level": "WARN", "message": "Slow query"},
+        ]}}
+        section = self.generator._generate_logs_section(metrics)
+        self.assertIn("Error/Warning Logs", section)
+        self.assertIn("NullRef exception", section)
+        self.assertIn("🔴", section)
+        self.assertIn("🟡", section)
+
+    def test_log_message_truncation(self):
+        long_msg = "x" * 300
+        metrics = {"application_logs": {"application_logs": [
+            {"timestamp": "t", "level": "ERROR", "message": long_msg}
+        ]}}
+        section = self.generator._generate_logs_section(metrics)
+        self.assertIn("...", section)
+
+
+class TestAlertsSection(unittest.TestCase):
+    """Test _generate_alerts_section."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+
+    def test_empty_returns_empty(self):
+        section = self.generator._generate_alerts_section({})
+        self.assertEqual(section, "")
+
+    def test_alerts_table(self):
+        metrics = {"alerts": {"alerts": [
+            {"priority": "CRITICAL", "title": "High CPU Alert", "state": "closed",
+             "duration_seconds": 600, "policy_name": "default", "condition_name": "cpu"},
+            {"priority": "WARNING", "title": "Memory Warning", "state": "open",
+             "duration_seconds": None, "policy_name": "infra", "condition_name": "mem"},
+        ]}}
+        section = self.generator._generate_alerts_section(metrics)
+        self.assertIn("Recent Alerts", section)
+        self.assertIn("High CPU Alert", section)
+        self.assertIn("🔴", section)
+        self.assertIn("ongoing", section)
+
+
+class TestTrendsSection(unittest.TestCase):
+    """Test _generate_trends_section."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+
+    def test_empty_returns_empty(self):
+        section = self.generator._generate_trends_section({})
+        self.assertEqual(section, "")
+
+    def test_trends_table_with_begin_time(self):
+        metrics = {"hourly_trends": {"hourly_trends": [
+            {"begin_time": 1710000000, "avg_response_ms": 250.0,
+             "throughput_rpm": 100.0, "error_rate": 0.02},
+        ]}}
+        section = self.generator._generate_trends_section(metrics)
+        self.assertIn("Hourly Performance Trends", section)
+        self.assertIn("250", section)
+        self.assertIn("100.0", section)
+
+    def test_trends_table_without_begin_time(self):
+        metrics = {"hourly_trends": {"hourly_trends": [
+            {"begin_time": None, "timestamp": "2025-01-01T12:00",
+             "avg_response_ms": 300.0, "throughput_rpm": 50.0, "error_rate": 0.01},
+        ]}}
+        section = self.generator._generate_trends_section(metrics)
+        self.assertIn("2025-01-01T12:00", section)
+
+
+class TestBaselinesSection(unittest.TestCase):
+    """Test _generate_baselines_section."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+
+    def test_empty_returns_empty(self):
+        section = self.generator._generate_baselines_section({})
+        self.assertEqual(section, "")
+
+    def test_baselines_comparison(self):
+        metrics = {
+            "baselines": {"baselines": {
+                "response_time_7d_avg_ms": 300.0,
+                "throughput_7d_avg_rpm": 500.0,
+                "error_rate_7d_avg": 0.01,
+                "total_requests_7d": 100000,
+            }},
+            "performance": {"response_time": 350.0, "throughput": 450.0},
+            "errors": {"error_rate": 0.02},
+        }
+        section = self.generator._generate_baselines_section(metrics)
+        self.assertIn("7-Day Baseline", section)
+        self.assertIn("350", section)
+        self.assertIn("300", section)
+        self.assertIn("100,000", section)
+
+    def test_baselines_no_current_metrics(self):
+        metrics = {
+            "baselines": {"baselines": {
+                "response_time_7d_avg_ms": 300.0,
+                "throughput_7d_avg_rpm": None,
+                "error_rate_7d_avg": None,
+                "total_requests_7d": None,
+            }},
+            "performance": {},
+            "errors": {},
+        }
+        section = self.generator._generate_baselines_section(metrics)
+        self.assertIn("7-Day Baseline", section)
+
+
+class TestDeploymentsSection(unittest.TestCase):
+    """Test _generate_deployments_section."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+
+    def test_empty_returns_empty(self):
+        section = self.generator._generate_deployments_section({})
+        self.assertEqual(section, "")
+
+    def test_deployments_table(self):
+        metrics = {"deployments": {"deployments": [
+            {"timestamp": "2025-01-01", "revision": "abc123",
+             "user": "dev", "description": "hotfix deploy"},
+        ]}}
+        section = self.generator._generate_deployments_section(metrics)
+        self.assertIn("Recent Deployments", section)
+        self.assertIn("abc123", section)
+        self.assertIn("hotfix deploy", section)
+
+
+class TestPerformanceSectionBreakdown(unittest.TestCase):
+    """Test performance section response time breakdown table."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+        self.scores = {"performance": 70}
+
+    def test_response_time_breakdown_table(self):
+        metrics = {"performance": {
+            "response_time": 500.0, "p50_ms": 200, "p90_ms": 400,
+            "p95_ms": 600, "p99_ms": 900, "throughput": 100.0,
+            "total_requests": 50000, "apdex_score": 0.85,
+            "apdex_satisfied": 40000, "apdex_tolerating": 8000, "apdex_frustrated": 2000,
+            "availability": 99.95, "instance_count": 3,
+            "db_time_ms": 150.0, "ext_time_ms": 100.0,
+            "app_time_ms": 200.0, "queue_time_ms": 50.0,
+        }}
+        section = self.generator._generate_performance_section(metrics, self.scores)
+        self.assertIn("Response Time Breakdown", section)
+        self.assertIn("Application Code", section)
+        self.assertIn("Database", section)
+        self.assertIn("External Services", section)
+        self.assertIn("Request Queue", section)
+        self.assertIn("Availability", section)
+        self.assertIn("Instances", section)
+        self.assertIn("Satisfied", section)
+
+    def test_performance_with_apdex_no_breakdown(self):
+        metrics = {"performance": {
+            "response_time": 300.0, "apdex_score": 0.75,
+            "throughput": 50.0,
+        }}
+        section = self.generator._generate_performance_section(metrics, self.scores)
+        self.assertIn("estimated", section)
+
+
+class TestErrorSectionDetails(unittest.TestCase):
+    """Test error section with error details table and stack traces."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+        self.scores = {"errors": 60}
+
+    def test_error_details_table(self):
+        metrics = {
+            "errors": {"error_rate": 0.03, "error_count": 150,
+                       "total_transactions": 5000, "error_types": ["NullRef", "Timeout"]},
+            "error_details": {"error_details": [
+                {"error_class": "NullRef", "count": 100, "message": "Object ref not set",
+                 "stack_trace": "at Foo.Bar()\nat Baz.Qux()"},
+                {"error_class": "Timeout", "count": 50, "message": "Request timed out",
+                 "stack_trace": None},
+            ]},
+        }
+        section = self.generator._generate_error_section(metrics, self.scores)
+        self.assertIn("Error Breakdown", section)
+        self.assertIn("NullRef", section)
+        self.assertIn("Top Error Stack Traces", section)
+        self.assertIn("Foo.Bar", section)
+
+    def test_error_section_with_nested_dict(self):
+        metrics = {"errors": {"errors": {"error_rate": 0.01, "error_count": 10}}}
+        section = self.generator._generate_error_section(metrics, self.scores)
+        self.assertIn("1.00%", section)
+
+
+class TestDatabaseSectionDetails(unittest.TestCase):
+    """Test database section with database details table."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+        self.scores = {"database": 50}
+
+    def test_database_details_table(self):
+        metrics = {
+            "database": {"query_time": 120.0, "slow_queries": 5,
+                        "connection_pool_usage": 0.95, "database_calls": 150},
+            "database_details": {"database_details": [
+                {"datastore_type": "MSSQL", "table": "Users", "operation": "SELECT",
+                 "avg_duration_ms": 600.0, "p95_ms": 1200.0, "call_count": 500, "total_time_ms": 300000},
+            ]},
+        }
+        section = self.generator._generate_database_section(metrics, self.scores)
+        self.assertIn("Top Database Operations", section)
+        self.assertIn("MSSQL", section)
+        self.assertIn("Users", section)
+        self.assertIn("🔴", section)  # slow query indicator
+        self.assertIn("⚠️", section)  # pool usage warning
+        self.assertIn("N+1", section)  # high db calls warning
+
+    def test_database_section_nested_dict(self):
+        metrics = {"database": {"database": {"query_time": 50, "slow_queries": 0,
+                                             "connection_pool_usage": 0.5, "database_calls": 10}}}
+        section = self.generator._generate_database_section(metrics, self.scores)
+        self.assertIn("50", section)
+
+
+class TestApiSectionDetails(unittest.TestCase):
+    """Test API section with nested dict unwrapping and web/other counts."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+        self.scores = {"api": 70}
+
+    def test_api_section_with_types(self):
+        metrics = {"transactions": {
+            "transaction_time": 300.0, "external_calls": 100,
+            "external_latency": 150.0, "api_endpoints": ["/api/v1/users"],
+            "web_count": 5000, "other_count": 200,
+        }}
+        section = self.generator._generate_api_section(metrics, self.scores)
+        self.assertIn("5,000 Web", section)
+        self.assertIn("200 Background", section)
+
+    def test_api_section_nested_dict(self):
+        metrics = {"transactions": {"transactions": {
+            "transaction_time": 100, "external_calls": 5,
+            "external_latency": 50, "api_endpoints": [],
+        }}}
+        section = self.generator._generate_api_section(metrics, self.scores)
+        self.assertIn("100", section)
+
+
+class TestInfrastructureSectionDetails(unittest.TestCase):
+    """Test infrastructure section with hostname and nested dict."""
+
+    def setUp(self):
+        self.generator = ReportGenerator()
+        self.scores = {"infrastructure": 65}
+
+    def test_infra_with_hostname_and_instances(self):
+        metrics = {"infrastructure": {
+            "host_name": "prod-web-01", "instance_count": 3,
+            "cpu_percent": 45.0, "memory_percent": 70.0,
+            "memory_used_gb": 5.6, "memory_total_gb": 8.0,
+            "disk_percent": 40.0,
+        }}
+        section = self.generator._generate_infrastructure_section(metrics, self.scores)
+        self.assertIn("prod-web-01", section)
+        self.assertIn("+2 more", section)
+        self.assertIn("5.6 / 8.0 GB", section)
+
+    def test_infra_with_only_mem_used(self):
+        metrics = {"infrastructure": {
+            "cpu_percent": None, "memory_percent": None,
+            "memory_used_gb": 3.5, "memory_total_gb": None,
+            "disk_percent": None,
+        }}
+        section = self.generator._generate_infrastructure_section(metrics, self.scores)
+        self.assertIn("3.5 GB", section)
+
+    def test_infra_nested_dict(self):
+        metrics = {"infrastructure": {"infrastructure": {
+            "cpu_percent": 80.0, "memory_percent": None, "disk_percent": None,
+        }}}
+        section = self.generator._generate_infrastructure_section(metrics, self.scores)
+        self.assertIn("80.0%", section)
+
+
 if __name__ == "__main__":
     unittest.main()

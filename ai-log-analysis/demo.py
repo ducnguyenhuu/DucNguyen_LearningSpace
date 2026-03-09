@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """
-Demo script to test the AI Log Analysis tool with real New Relic data.
+Demo / legacy entry point for the AI Log Analysis tool.
 
-This script demonstrates the end-to-end workflow:
+Preferred entry point: python main.py (see main.py for full CLI options).
+
+This script is kept for backward compatibility and delegates
+the same end-to-end workflow as main.py:
 1. Load configuration
 2. Fetch data from New Relic API
 3. Calculate health score
@@ -13,6 +16,9 @@ Usage:
 
     --days     Time window in days (1, 3, 7, 14, 30). Default: 1
     --profile  Config profile to use (dev, prod).    Default: dev
+
+For additional CLI options (--from-file, --no-cache, --validate-config, etc.),
+use ``python main.py --help``.
 """
 
 import sys
@@ -114,39 +120,72 @@ def main():
         print("  - Fetching API/transaction metrics...")
         api_data = api_client.fetch_transaction_metrics(app_id, days)
 
-        # Detailed breakdowns
-        print("  - Fetching error details with stack traces...")
-        error_details_data = api_client.fetch_error_details(app_id, days)
+        # Detailed breakdowns — each is enrichment data, so failures are non-fatal
+        def _safe_fetch(label, fetch_fn, default):
+            """Fetch enrichment data; return default on failure instead of aborting."""
+            print(f"  - {label}")
+            try:
+                return fetch_fn()
+            except Exception as e:
+                print(f"    ⚠ Skipped ({e})")
+                return default
 
-        print("  - Fetching slow transaction breakdown (top 20)...")
-        slow_transactions_data = api_client.fetch_slow_transactions(app_id, days)
+        error_details_data = _safe_fetch(
+            "Fetching error details with stack traces...",
+            lambda: api_client.fetch_error_details(app_id, days),
+            {'error_details': []})
 
-        print("  - Fetching database query details...")
-        database_details_data = api_client.fetch_database_details(app_id, days)
+        slow_transactions_data = _safe_fetch(
+            "Fetching slow transaction breakdown (top 20)...",
+            lambda: api_client.fetch_slow_transactions(app_id, days),
+            {'slow_transactions': []})
 
-        print("  - Fetching top-20 slowest database transactions...")
-        slow_db_transactions_data = api_client.fetch_slow_db_transactions(app_id, days)
+        database_details_data = _safe_fetch(
+            "Fetching database query details...",
+            lambda: api_client.fetch_database_details(app_id, days),
+            {'database_details': []})
 
-        print("  - Fetching external service breakdown...")
-        external_services_data = api_client.fetch_external_services(app_id, days)
+        slow_db_transactions_data = _safe_fetch(
+            "Fetching top-20 slowest database transactions...",
+            lambda: api_client.fetch_slow_db_transactions(app_id, days),
+            {'slow_db_transactions': []})
+
+        external_services_data = _safe_fetch(
+            "Fetching external service breakdown...",
+            lambda: api_client.fetch_external_services(app_id, days),
+            {'external_services': []})
 
         # Logs
-        print("  - Fetching application logs (errors/warnings/exceptions)...")
-        application_logs_data = api_client.fetch_application_logs(app_id, days, app_name=app_name)
+        application_logs_data = _safe_fetch(
+            "Fetching application logs (errors/warnings/exceptions)...",
+            lambda: api_client.fetch_application_logs(app_id, days, app_name=app_name),
+            {'application_logs': []})
 
-        print("  - Fetching log volume by level...")
-        log_volume_data = api_client.fetch_log_volume(app_id, days, app_name=app_name)
+        log_volume_data = _safe_fetch(
+            "Fetching log volume by level...",
+            lambda: api_client.fetch_log_volume(app_id, days, app_name=app_name),
+            {'log_volume': []})
 
         # Context data
-        print("  - Fetching alert/incident history...")
-        alerts_data = api_client.fetch_alerts(app_id, days, app_name=app_name)
+        alerts_data = _safe_fetch(
+            "Fetching alert/incident history...",
+            lambda: api_client.fetch_alerts(app_id, days, app_name=app_name),
+            {'alerts': []})
 
-        print("  - Fetching hourly performance trends...")
-        hourly_trends_data = api_client.fetch_hourly_trends(app_id, days)
+        hourly_trends_data = _safe_fetch(
+            "Fetching hourly performance trends...",
+            lambda: api_client.fetch_hourly_trends(app_id, days),
+            {'hourly_trends': []})
 
-        print("  - Fetching 7-day baselines & deployment markers...")
-        baselines_data = api_client.fetch_baselines(app_id)
-        deployments_data = api_client.fetch_deployments(app_id, days, app_name=app_name)
+        baselines_data = _safe_fetch(
+            "Fetching 7-day baselines...",
+            lambda: api_client.fetch_baselines(app_id),
+            {'baselines': {}})
+
+        deployments_data = _safe_fetch(
+            "Fetching deployment markers...",
+            lambda: api_client.fetch_deployments(app_id, days, app_name=app_name),
+            {'deployments': []})
         collection_end = datetime.now(_EST)
 
         # Save raw data to data/ folder

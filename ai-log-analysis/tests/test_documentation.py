@@ -275,3 +275,95 @@ class TestDocumentationConsistency:
             if section in config:
                 assert section in readme_content, \
                     f"README should document the '{section}' configuration section"
+
+
+class TestAgentDocumentation:
+    """AC1-AC5: Test README documents AI agent usage workflow and integration."""
+
+    @pytest.fixture(autouse=True)
+    def load_readme(self):
+        with open('README.md', 'r', encoding='utf-8') as f:
+            self.content = f.read()
+
+    def test_readme_has_ai_insights_section(self):
+        """AC1: README has AI-Powered Insights section."""
+        assert '## AI-Powered Insights' in self.content
+
+    def test_readme_documents_analysis_agent(self):
+        """AC1: README documents @analysis-agent."""
+        assert '@analysis-agent' in self.content or 'analysis-agent' in self.content
+
+    def test_readme_documents_recommend_agent(self):
+        """AC1: README documents @recommend-agent."""
+        assert '@recommend-agent' in self.content or 'recommend-agent' in self.content
+
+    def test_readme_agent_overview_table(self):
+        """AC1: README has an agent overview showing role, input, and output."""
+        assert 'analysis-agent' in self.content
+        assert 'recommend-agent' in self.content
+        assert 'assessment' in self.content.lower()
+        assert 'recommendation' in self.content.lower()
+
+    def test_readme_vscode_setup(self):
+        """AC2: README explains VS Code Copilot agent setup."""
+        assert '.github/agents/' in self.content
+        assert 'VS Code' in self.content or 'Copilot Chat' in self.content
+
+    def test_readme_agent_files_listed(self):
+        """AC2: README lists the agent instruction files."""
+        assert 'analysis-agent.md' in self.content
+        assert 'recommend-agent.md' in self.content
+        assert 'analysis-agent.agent.md' in self.content
+        assert 'recommend-agent.agent.md' in self.content
+
+    def test_readme_daily_monitoring_workflow(self):
+        """AC3: README includes daily monitoring workflow."""
+        lower = self.content.lower()
+        assert 'daily' in lower or 'monitoring' in lower
+        assert 'demo.py' in self.content or 'crawler.py' in self.content
+
+    def test_readme_incident_investigation_workflow(self):
+        """AC3: README includes incident investigation workflow."""
+        assert 'incident' in self.content.lower() or 'investigation' in self.content.lower()
+
+    def test_readme_post_deployment_workflow(self):
+        """AC3: README includes post-deployment verification workflow."""
+        assert 'deploy' in self.content.lower()
+        assert 'verif' in self.content.lower()
+
+    def test_readme_expected_output_assessment(self):
+        """AC4: README describes assessment output files."""
+        assert 'assessment-' in self.content
+        assert 'reports/' in self.content
+
+    def test_readme_expected_output_recommendations(self):
+        """AC4: README describes recommendation output files."""
+        assert 'recommendations-' in self.content
+
+    def test_readme_output_line_estimates(self):
+        """AC4: README gives output size expectations."""
+        assert '200' in self.content  # assessment 200-500 lines
+        assert '300' in self.content  # recommendations 300-800 lines
+
+    def test_readme_roadmap_epic5_completed(self):
+        """AC5: Roadmap shows Epic 5 as completed."""
+        # Look for Epic 5 marked as completed in the roadmap
+        assert 'Completed (Epic 5)' in self.content or 'AI Agent Integration' in self.content
+        assert 'analysis-agent' in self.content
+        assert 'recommend-agent' in self.content
+
+    def test_readme_roadmap_shows_all_epics(self):
+        """AC5: Roadmap lists all 6 epics."""
+        lower = self.content.lower()
+        assert 'epic 1' in lower or 'configuration' in lower
+        assert 'epic 2' in lower or 'data collection' in lower
+        assert 'epic 3' in lower or 'health analysis' in lower
+        assert 'epic 4' in lower or 'report generation' in lower
+        assert 'epic 5' in lower or 'ai agent' in lower
+        assert 'epic 6' in lower or 'testing' in lower
+
+    def test_readme_prerequisites(self):
+        """AC2: README lists prerequisites for using agents."""
+        lower = self.content.lower()
+        assert 'copilot' in lower
+        assert 'prerequisit' in lower or 'require' in lower

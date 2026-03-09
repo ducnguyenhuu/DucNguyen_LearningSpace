@@ -81,17 +81,24 @@ cp .newrelic_config.example.json .newrelic_config.prod.json
 ### 5. Run Health Assessment
 
 ```bash
-# Use default profile (dev) and default time period (30 days)
-python crawler.py
+# Default: dev profile, 1-day window
+python main.py
 
 # Specify profile and time period
-python crawler.py --profile dev --days 7
+python main.py --profile prod --days 7
 
-# Assess specific application
-python crawler.py --profile prod --app my-prod-app --days 14
+# Analyze previously cached data offline
+python main.py --from-file data/PROD_TMS-1d-2026-03-06-223409.json
+
+# Validate configuration without running assessment
+python main.py --validate-config --profile prod
+
+# Skip saving data to cache
+python main.py --no-cache --days 3
+
+# Custom report output directory
+python main.py --output-dir ./my-reports
 ```
-
-**Note:** The crawler is not yet implemented. This is a planned feature for Epic 2.
 
 ## Configuration
 
@@ -150,20 +157,38 @@ The `--days` parameter accepts only these values:
 ```
 ai-log-analysis/
 ├── config.yaml                      # Application defaults
+├── demo.py                          # Data collection & report generation
 ├── .newrelic_config.example.json   # Template (committed)
 ├── .newrelic_config.dev.json       # Dev credentials (gitignored)
 ├── .newrelic_config.prod.json      # Prod credentials (gitignored)
 ├── requirements.txt                 # Python dependencies
 ├── modules/                         # Core application modules
 │   ├── __init__.py
-│   └── config_loader.py            # Configuration loading and validation
+│   ├── config_loader.py            # Configuration loading and validation
+│   ├── api_client.py               # New Relic NerdGraph API wrapper
+│   ├── health_calculator.py        # Health scoring engine (5-category weighted)
+│   └── report_generator.py         # Markdown report generation
 ├── agents/                          # AI agent instruction files
-├── data/                           # Cached APM data (gitignored)
+│   ├── analysis-agent.md           # @analysis-agent full instructions
+│   └── recommend-agent.md          # @recommend-agent full instructions
+├── .github/agents/                  # VS Code Copilot Chat integration
+│   ├── analysis-agent.agent.md     # @analysis-agent activation
+│   └── recommend-agent.agent.md    # @recommend-agent activation
+├── data/                           # Cached APM data JSON files (gitignored)
 ├── logs/                           # Application logs (gitignored)
-├── reports/                        # Generated health reports
-└── tests/                          # Test suite
+├── reports/                        # Generated reports
+│   ├── health-report-*.md          # Automated health reports
+│   ├── assessment-*.md             # AI analysis assessments
+│   └── recommendations-*.md        # AI fix recommendations
+└── tests/                          # Test suite (399 tests)
     ├── __init__.py
     ├── test_config_loader.py
+    ├── test_api_client.py
+    ├── test_health_calculator.py
+    ├── test_report_generator.py
+    ├── test_analysis_agent.py
+    ├── test_recommend_agent.py
+    ├── test_documentation.py
     └── test_project_structure.py
 ```
 
@@ -210,7 +235,7 @@ python3 -m pytest tests/test_config_loader.py -v
 python3 -m pytest tests/ --cov=modules --cov-report=html
 ```
 
-**Current Test Coverage:** 59 tests, 100% passing
+**Current Test Coverage:** 399 tests, 100% passing
 
 ## Troubleshooting
 
@@ -382,49 +407,151 @@ Your New Relic User API key needs:
 - ✅ Read access to NRQL queries
 - ❌ No write permissions required (read-only operation)
 
-## AI-Powered Insights (Coming Soon)
+## AI-Powered Insights
 
-This tool integrates with GitHub Copilot for enhanced analysis:
+This tool integrates with GitHub Copilot custom agents for AI-powered health analysis and code fix recommendations. Two agents work together in a pipeline:
 
-### Available Copilot Agents
+| Agent | Role | Input | Output |
+|-------|------|-------|--------|
+| **@analysis-agent** | Expert SRE — analyzes collected data, calculates health scores, detects issues | JSON data file in `data/` | `reports/assessment-{app}-{timestamp}.md` |
+| **@recommend-agent** | Expert software engineer — reads assessments, finds affected code, generates fixes | Assessment file in `reports/` | `reports/recommendations-{app}-{timestamp}.md` |
 
-- **@analysis-agent** - Analyzes health metrics and generates scores
-- **@recommend-agent** - Provides code-specific improvement recommendations
+### Prerequisites
 
-### Usage (Planned)
+- **GitHub Copilot** subscription (individual or business)
+- **VS Code** with GitHub Copilot Chat extension installed
+- Agent files already included in this repository (no additional setup needed)
 
-```bash
-# In GitHub Copilot Chat
-@analysis-agent analyze the health report for critical-service
+### Agent Files
 
-@recommend-agent suggest fixes for N+1 query issues in user-service
+The agent instruction files are pre-configured in the repository:
+
+```
+agents/
+├── analysis-agent.md          # Full analysis instructions, scoring methodology, output format
+└── recommend-agent.md         # Full recommendation instructions, root cause patterns, fix template
+
+.github/agents/
+├── analysis-agent.agent.md    # VS Code Copilot Chat integration for @analysis-agent
+└── recommend-agent.agent.md   # VS Code Copilot Chat integration for @recommend-agent
 ```
 
-**Note:** Agent functionality requires GitHub Copilot subscription.
+### VS Code Setup
+
+The `.github/agents/` directory is automatically recognized by VS Code Copilot Chat. No additional configuration is required — just open the workspace and the agents are available.
+
+To verify the agents are loaded, type `@` in the Copilot Chat input and you should see `analysis-agent` and `recommend-agent` in the autocomplete list.
+
+### End-to-End Workflow
+
+#### Daily Health Monitoring
+
+```bash
+# 1. Collect fresh data from New Relic
+python demo.py --profile prod --days 1
+
+# 2. In VS Code Copilot Chat:
+#    @analysis-agent analyze the latest data file in data/
+#    → Generates: reports/assessment-{app}-{timestamp}.md
+
+# 3. If issues found:
+#    @recommend-agent review the latest assessment
+#    → Generates: reports/recommendations-{app}-{timestamp}.md
+
+# 4. Implement fixes following the recommendations
+# 5. Check off items in the recommendations file as they are applied
+```
+
+#### Incident Investigation
+
+```bash
+# 1. Collect data for the incident period
+python demo.py --profile prod --days 1
+
+# 2. In VS Code Copilot Chat:
+#    @analysis-agent analyze the latest data — focus on critical issues
+#    → Review the Critical Issues 🔴 section
+
+# 3. Get targeted fix recommendations:
+#    @recommend-agent provide fixes for the critical issues in the latest assessment
+#    → Get exact code changes with file paths and line numbers
+
+# 4. Apply the recommended fix, deploy, verify
+```
+
+#### Post-Deployment Verification
+
+```bash
+# 1. Deploy your changes
+# 2. Wait 30 minutes for metrics to stabilize
+# 3. Collect fresh data
+python demo.py --profile prod --days 1
+
+# 4. In VS Code Copilot Chat:
+#    @analysis-agent analyze the latest data and compare with the previous assessment
+#    → Verify health scores improved and no regressions introduced
+```
+
+### Expected Outputs
+
+**Assessment files** (`reports/assessment-{app}-{timestamp}.md`):
+- 200–500 lines
+- Executive summary with overall health score (0–100)
+- 5-category score breakdown (Performance, Errors, Infrastructure, Database, API)
+- Critical issues and warnings with specific metric values
+- Slow endpoint analysis, database deep dive, trend analysis
+- Checkbox tracking for identified issues
+
+**Recommendation files** (`reports/recommendations-{app}-{timestamp}.md`):
+- 300–800 lines
+- Fix tracking checklist with checkboxes per issue
+- Exact file paths, current code, and recommended fix code
+- Impact estimates, effort estimates, risk assessment
+- Implementation plan with priority ordering
+- Context section for other agents/developers to implement fixes
+
+**Automated health reports** (`reports/health-report-{app}-{timestamp}.md`):
+- Generated by `demo.py` during data collection
+- Metric breakdowns and severity indicators
+- Serves as a quick reference; agents provide deeper analysis
 
 ## Roadmap
 
-### ✅ Completed (Epic 1)
+### ✅ Completed (Epic 1) — Configuration Management
 - [x] Project structure initialization
 - [x] Configuration loader with multi-profile support
 - [x] Configuration validation with fail-fast
 - [x] Setup documentation and templates
 
-### 🚧 In Progress (Epic 2)
-- [ ] New Relic API client with retry logic
-- [ ] Performance metrics collection
-- [ ] Error metrics collection
-- [ ] Infrastructure metrics collection
-- [ ] Database metrics collection
-- [ ] API/Transaction metrics collection
-- [ ] Data caching with auto-cleanup
-- [ ] Comprehensive logging with progress indicators
+### ✅ Completed (Epic 2) — Data Collection
+- [x] New Relic API client with retry logic
+- [x] Performance metrics collection
+- [x] Error metrics collection
+- [x] Infrastructure metrics collection
+- [x] Database metrics collection
+- [x] API/Transaction metrics collection
+- [x] Data caching with auto-cleanup
+- [x] Comprehensive logging with progress indicators
 
-### 📋 Planned
-- **Epic 3:** Health Analysis Engine
-- **Epic 4:** Report Generation
-- **Epic 5:** AI Agent Integration
-- **Epic 6:** Testing & Finalization
+### ✅ Completed (Epic 3) — Health Analysis Engine
+- [x] Health score calculation engine with weighted algorithm
+- [x] Severity categorization with visual indicators
+- [x] Issue detection and findings generation
+
+### ✅ Completed (Epic 4) — Report Generation
+- [x] Report generator with executive summary
+- [x] Detailed metric breakdown sections
+- [x] Findings and recommendations sections with file naming
+
+### ✅ Completed (Epic 5) — AI Agent Integration
+- [x] @analysis-agent instruction file with health scoring logic
+- [x] @recommend-agent instruction file with code-specific fixes
+- [x] AI agent usage workflow documentation
+
+### ✅ Completed (Epic 6) — Testing & Finalization
+- [x] Comprehensive test suite with 94% coverage (512 tests)
+- [x] Main CLI orchestrator with full workflow (`main.py`)
+- [x] Code quality review and documentation finalization
 
 ## Contributing
 
@@ -442,6 +569,35 @@ For issues or questions:
 3. Check logs in `/logs` directory for detailed error messages
 
 ## Changelog
+
+### v1.0.0 (2026-03-09)
+- **Epic 6 complete** — project finalized
+- Comprehensive test suite: 530+ tests, 94% coverage
+- Production CLI orchestrator (`main.py`) with `--from-file`, `--no-cache`, `--validate-config`
+- Added pytest-cov to requirements
+- Code quality review and documentation finalization
+
+### v0.5.0 (2026-03-09)
+- AI agent integration (@analysis-agent, @recommend-agent)
+- VS Code Copilot Chat agent files
+- End-to-end workflow documentation
+- 399 tests passing
+
+### v0.4.0 (2026-03-06)
+- Report generator with executive summary and metric breakdowns
+- Findings and recommendations sections
+- Timestamped markdown reports in reports/ directory
+
+### v0.3.0 (2026-02-28)
+- Health score calculation engine with 5-category weighted algorithm
+- Severity categorization (Excellent/Good/Warning/Critical)
+- Issue detection and findings generation
+
+### v0.2.0 (2026-02-20)
+- New Relic NerdGraph API client with retry logic
+- Performance, error, infrastructure, database, API metrics collection
+- Data caching with auto-cleanup
+- Comprehensive logging with progress indicators
 
 ### v0.1.0 (2026-02-16)
 - Initial project setup
