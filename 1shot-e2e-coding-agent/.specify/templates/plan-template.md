@@ -9,6 +9,10 @@
 
 [Extract from feature spec: primary requirement + technical approach from research]
 
+### Why This Approach (Beginner Explanation)
+
+[Explain the chosen technical approach in plain language — what it does, why it was chosen over alternatives, and what the key terms mean for someone learning these concepts for the first time.]
+
 ## Technical Context
 
 <!--
@@ -31,7 +35,10 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- [ ] **Principle I — Beginner-Friendly Explanations**: All technical decisions in this plan include plain-language "Why this matters" explanations. Acronyms spelled out on first use.
+- [ ] **Principle II — Unit Tests with Every Implementation**: Plan accounts for test files alongside every source file. Summary blocks are planned for each deliverable.
+- [ ] **Principle III — Cross-Document Consistency**: This plan is consistent with spec.md, tasks.md, and constitution.md. No contradictions.
+- [ ] **Principle IV — Justified Decisions**: Every tool, pattern, and architectural choice includes Problem → Alternatives → Decision → Selling Points → Trade-offs.
 
 ## Project Structure
 
