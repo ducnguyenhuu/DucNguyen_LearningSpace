@@ -8,7 +8,7 @@
 
     // Output
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -25,6 +25,6 @@
     "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "extensions/**/*"],
   "exclude": ["node_modules", "dist", "tests", "scripts"]
 }

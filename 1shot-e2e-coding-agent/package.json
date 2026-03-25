@@ -4,7 +4,7 @@
   "description": "One-shot end-to-end coding agent powered by Pi SDK",
   "type": "module",
   "bin": {
-    "1shot-agent": "./dist/cli.js"
+    "duc-e2e-agent": "./dist/src/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -24,6 +24,7 @@
     "js-tiktoken": "^1.0.15",
     "pino": "^9.2.0",
     "simple-git": "^3.24.0",
+    "tree-sitter-wasms": "^0.1.13",
     "vectra": "^0.9.0",
     "web-tree-sitter": "^0.22.6"
   },

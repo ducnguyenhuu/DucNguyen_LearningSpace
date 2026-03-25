@@ -276,6 +276,8 @@ export interface SessionConfig {
   extensions: string[];
   provider: Provider;
   model: string;
+  /** Custom Pi SDK ToolDefinition objects (e.g. from context-tools extension). */
+  customTools?: unknown[];
 }
 
 // ─── Validation helpers ───────────────────────────────────────────────────────

@@ -46,15 +46,15 @@ Single project layout per plan.md:
 - [X] T004 [P] Write unit tests for shared type guards and validation helpers in tests/unit/types.test.ts
 - [X] T005 Create all shared TypeScript interfaces and types in src/types.ts — AgentConfig, Task, Run, RunStatus, Blueprint, BlueprintNode, StepResult, RunContext, Session, RunReport, PRSummary, TokenBudget, LayerBudgets, FileChange, TestResult, NodeResult (per data-model.md)
 - [X] T006 [P] Write unit tests for configuration loading and validation in tests/unit/config.test.ts
-- [ ] T007 [P] Implement configuration loading from pi-agent.config.ts with validation rules in src/config.ts — validate maxTokensPerRun > 0, timeoutSeconds > 0, non-empty testCommand/lintCommand, supported provider (FR-018, per data-model.md AgentConfig entity)
-- [ ] T008 [P] Write unit tests for Pi SDK adapter in tests/unit/adapters/pi-sdk.test.ts — test session creation, prompt execution, token usage extraction
-- [ ] T009 [P] Implement Pi SDK adapter layer wrapping createAgentSession, session.prompt, and session.tokenUsage in src/adapters/pi-sdk.ts (FR-012, Architecture Decision D2)
-- [ ] T010 Write unit tests for BlueprintRunner orchestrator in tests/unit/orchestrator.test.ts — test node sequencing, conditional routing, error propagation
-- [ ] T011 Implement BlueprintRunner orchestrator class with addNode and run methods in src/orchestrator.ts (Architecture Decision D1 — deterministic + agent node sequencing via next() routing)
-- [ ] T012 [P] Write unit tests for path validation in tests/unit/security/path-validator.test.ts — test allowed paths, directory traversal rejection, symlink handling
-- [ ] T013 [P] Implement path validation module restricting file I/O to repo directory in src/security/path-validator.ts (FR-019)
-- [ ] T014 [P] Write unit tests for token budget manager in tests/unit/context/token-budget.test.ts — test per-layer allocation, consumption tracking, graceful degradation threshold
-- [ ] T015 [P] Implement token budget manager with per-layer allocation (L0: 5%, L1: 15%, L2: 40%, L3: 10%, reserved: 30%) and graceful degradation in src/context/token-budget.ts (FR-013, data-model.md TokenBudget entity)
+- [X] T007 [P] Implement configuration loading from pi-agent.config.ts with validation rules in src/config.ts — validate maxTokensPerRun > 0, timeoutSeconds > 0, non-empty testCommand/lintCommand, supported provider (FR-018, per data-model.md AgentConfig entity)
+- [X] T008 [P] Write unit tests for Pi SDK adapter in tests/unit/adapters/pi-sdk.test.ts — test session creation, prompt execution, token usage extraction
+- [X] T009 [P] Implement Pi SDK adapter layer wrapping createAgentSession, session.prompt, and session.tokenUsage in src/adapters/pi-sdk.ts (FR-012, Architecture Decision D2)
+- [X] T010 Write unit tests for BlueprintRunner orchestrator in tests/unit/orchestrator.test.ts — test node sequencing, conditional routing, error propagation
+- [X] T011 Implement BlueprintRunner orchestrator class with addNode and run methods in src/orchestrator.ts (Architecture Decision D1 — deterministic + agent node sequencing via next() routing)
+- [X] T012 [P] Write unit tests for path validation in tests/unit/security/path-validator.test.ts — test allowed paths, directory traversal rejection, symlink handling
+- [X] T013 [P] Implement path validation module restricting file I/O to repo directory in src/security/path-validator.ts (FR-019)
+- [X] T014 [P] Write unit tests for token budget manager in tests/unit/context/token-budget.test.ts — test per-layer allocation, consumption tracking, graceful degradation threshold
+- [X] T015 [P] Implement token budget manager with per-layer allocation (L0: 5%, L1: 15%, L2: 40%, L3: 10%, reserved: 30%) and graceful degradation in src/context/token-budget.ts (FR-013, data-model.md TokenBudget entity)
 
 **Checkpoint**: Foundation ready — all shared types, config, adapter, orchestrator, path validation, and token budget are working with passing tests. User story implementation can now begin.
 
@@ -71,32 +71,32 @@ Single project layout per plan.md:
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation.**
 > **Each completed task MUST include a summary: what was built, what tests verify, known limitations.**
 
-- [ ] T016 [P] [US1] Write unit tests for CLI run command parsing and option handling in tests/unit/cli.test.ts
-- [ ] T017 [P] [US1] Write unit tests for setup step (branch creation, task parsing) in tests/unit/steps/setup.test.ts
-- [ ] T018 [P] [US1] Write unit tests for lint-and-format step (command execution, auto-fix detection) in tests/unit/steps/lint-format.test.ts
-- [ ] T019 [P] [US1] Write unit tests for test step (command execution, pass/fail parsing) in tests/unit/steps/test.test.ts
-- [ ] T020 [P] [US1] Write unit tests for commit-and-push step (git operations, branch push) in tests/unit/steps/commit-push.test.ts
-- [ ] T021 [P] [US1] Write unit tests for report step (summary formatting, metrics output) in tests/unit/steps/report.test.ts
-- [ ] T079 [P] [US1] Write unit tests for context-gather step (adapter mock, prompt construction, relevant file output parsing) in tests/unit/steps/context-gather.test.ts
-- [ ] T080 [P] [US1] Write unit tests for plan step (read-only tool verification, structured plan output parsing) in tests/unit/steps/plan.test.ts
-- [ ] T081 [P] [US1] Write unit tests for implement step (write tool access verification, file change tracking) in tests/unit/steps/implement.test.ts
-- [ ] T082 [P] [US1] Write unit tests for standard blueprint routing logic (test pass → commit, test fail → fix_failures, retry cap enforcement) in tests/unit/blueprints/standard.test.ts
+- [X] T016 [P] [US1] Write unit tests for CLI run command parsing and option handling in tests/unit/cli.test.ts
+- [X] T017 [P] [US1] Write unit tests for setup step (branch creation, task parsing) in tests/unit/steps/setup.test.ts
+- [X] T018 [P] [US1] Write unit tests for lint-and-format step (command execution, auto-fix detection) in tests/unit/steps/lint-format.test.ts
+- [X] T019 [P] [US1] Write unit tests for test step (command execution, pass/fail parsing) in tests/unit/steps/test.test.ts
+- [X] T020 [P] [US1] Write unit tests for commit-and-push step (git operations, branch push) in tests/unit/steps/commit-push.test.ts
+- [X] T021 [P] [US1] Write unit tests for report step (summary formatting, metrics output) in tests/unit/steps/report.test.ts
+- [X] T079 [P] [US1] Write unit tests for context-gather step (adapter mock, prompt construction, relevant file output parsing) in tests/unit/steps/context-gather.test.ts
+- [X] T080 [P] [US1] Write unit tests for plan step (read-only tool verification, structured plan output parsing) in tests/unit/steps/plan.test.ts
+- [X] T081 [P] [US1] Write unit tests for implement step (write tool access verification, file change tracking) in tests/unit/steps/implement.test.ts
+- [X] T082 [P] [US1] Write unit tests for standard blueprint routing logic (test pass → commit, test fail → fix_failures, retry cap enforcement) in tests/unit/blueprints/standard.test.ts
 
 ### Implementation for User Story 1
 
-- [ ] T022 [US1] Implement CLI entry point with run command accepting task description and all options (--config, --provider, --model, --dry-run, --max-retries, --max-tokens, --timeout, --verbose, --output-dir) in src/cli.ts (FR-001, FR-012, per contracts/cli-contract.md)
-- [ ] T023 [P] [US1] Implement setup step — create git branch, parse task slug, load AGENTS.md, initialize RunContext in src/steps/setup.ts (FR-002, FR-016)
-- [ ] T024 [P] [US1] Implement context-gather step — basic Pi session with read/grep/find/ls tools, output relevant files and understanding in src/steps/context-gather.ts (FR-003, FR-017)
-- [ ] T025 [P] [US1] Implement plan step — Pi session with read-only tools, output structured change plan in src/steps/plan.ts (FR-004, FR-017)
-- [ ] T026 [P] [US1] Implement implement step — Pi session with read/write/edit/bash/grep/find tools, execute code changes following the plan in src/steps/implement.ts (FR-005, FR-017)
-- [ ] T027 [P] [US1] Implement lint-and-format step — run configured lint/format/type-check commands via shell, capture output in src/steps/lint-format.ts (FR-006)
-- [ ] T028 [P] [US1] Implement test step — run configured test command via shell, parse pass/fail counts, return status in src/steps/test.ts (FR-007)
-- [ ] T029 [US1] Implement fix-failures step — basic Pi session receiving error output, attempts fix with read/write/edit/bash/grep tools in src/steps/fix-failures.ts (FR-008)
-- [ ] T030 [P] [US1] Implement commit-and-push step — stage changes, commit with prefix, push branch using simple-git in src/steps/commit-push.ts (FR-009)
-- [ ] T031 [P] [US1] Implement report step — basic console summary with files changed, test results, tokens, cost, time in src/steps/report.ts (FR-014)
-- [ ] T032 [P] [US1] Create system prompt templates for each agent node in prompts/context-gather.md, prompts/plan.md, prompts/implement.md, and prompts/fix-failures.md (per initial_requirement.md Section 7 system prompt strategy)
-- [ ] T033 [US1] Wire all 9 steps into standard blueprint with conditional routing (test pass → commit, test fail → fix_failures → retry) in src/blueprints/standard.ts (FR-017)
-- [ ] T034 [US1] Write integration test for full blueprint execution against a test fixture repo in tests/integration/blueprint-runner.test.ts — include edge cases: LLM API error mid-run, ambiguous/too-broad task, new files in non-existent directories
+- [X] T022 [US1] Implement CLI entry point with run command accepting task description and all options (--config, --provider, --model, --dry-run, --max-retries, --max-tokens, --timeout, --verbose, --output-dir) in src/cli.ts (FR-001, FR-012, per contracts/cli-contract.md)
+- [X] T023 [P] [US1] Implement setup step — create git branch, parse task slug, load AGENTS.md, initialize RunContext in src/steps/setup.ts (FR-002, FR-016)
+- [X] T024 [P] [US1] Implement context-gather step — basic Pi session with read/grep/find/ls tools, output relevant files and understanding in src/steps/context-gather.ts (FR-003, FR-017)
+- [X] T025 [P] [US1] Implement plan step — Pi session with read-only tools, output structured change plan in src/steps/plan.ts (FR-004, FR-017)
+- [X] T026 [P] [US1] Implement implement step — Pi session with read/write/edit/bash/grep/find tools, execute code changes following the plan in src/steps/implement.ts (FR-005, FR-017)
+- [X] T027 [P] [US1] Implement lint-and-format step — run configured lint/format/type-check commands via shell, capture output in src/steps/lint-format.ts (FR-006)
+- [X] T028 [P] [US1] Implement test step — run configured test command via shell, parse pass/fail counts, return status in src/steps/test.ts (FR-007)
+- [X] T029 [US1] Implement fix-failures step — basic Pi session receiving error output, attempts fix with read/write/edit/bash/grep tools in src/steps/fix-failures.ts (FR-008)
+- [X] T030 [P] [US1] Implement commit-and-push step — stage changes, commit with prefix, push branch using simple-git in src/steps/commit-push.ts (FR-009)
+- [X] T031 [P] [US1] Implement report step — basic console summary with files changed, test results, tokens, cost, time in src/steps/report.ts (FR-014)
+- [X] T032 [P] [US1] Create system prompt templates for each agent node in prompts/context-gather.md, prompts/plan.md, prompts/implement.md, and prompts/fix-failures.md (per initial_requirement.md Section 7 system prompt strategy)
+- [X] T033 [US1] Wire all 9 steps into standard blueprint with conditional routing (test pass → commit, test fail → fix_failures → retry) in src/blueprints/standard.ts (FR-017)
+- [X] T034 [US1] Write integration test for full blueprint execution against a test fixture repo in tests/integration/blueprint-runner.test.ts — include edge cases: LLM API error mid-run, ambiguous/too-broad task, new files in non-existent directories
 
 **Checkpoint**: User Story 1 complete — the agent can accept a task, run the full 9-node blueprint with basic context gathering, and produce a committed branch. This is the MVP.
 
@@ -112,23 +112,23 @@ Single project layout per plan.md:
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation.**
 
-- [ ] T035 [P] [US2] Write unit tests for repo map generator (tree-sitter parsing, symbol extraction, token limiting) in tests/unit/context/repo-map.test.ts
-- [ ] T036 [P] [US2] Write unit tests for code chunker (AST-based splitting at function/class boundaries) in tests/unit/context/chunker.test.ts
-- [ ] T037 [P] [US2] Write unit tests for embeddings module (indexing, querying, vectra integration) in tests/unit/context/embeddings.test.ts
-- [ ] T038 [P] [US2] Write unit tests for dependency graph builder (import parsing, importer/importee resolution) in tests/unit/context/dep-graph.test.ts
-- [ ] T039 [P] [US2] Write extension integration tests for context-tools Pi Extension in tests/extensions/context-tools.test.ts
-- [ ] T083 [P] [US2] Write unit tests for symbol navigation module (definition lookup, reference finding, tree-sitter integration) in tests/unit/context/symbol-nav.test.ts
+- [X] T035 [P] [US2] Write unit tests for repo map generator (tree-sitter parsing, symbol extraction, token limiting) in tests/unit/context/repo-map.test.ts
+- [X] T036 [P] [US2] Write unit tests for code chunker (AST-based splitting at function/class boundaries) in tests/unit/context/chunker.test.ts
+- [X] T037 [P] [US2] Write unit tests for embeddings module (indexing, querying, vectra integration) in tests/unit/context/embeddings.test.ts
+- [X] T038 [P] [US2] Write unit tests for dependency graph builder (import parsing, importer/importee resolution) in tests/unit/context/dep-graph.test.ts
+- [X] T039 [P] [US2] Write extension integration tests for context-tools Pi Extension in tests/extensions/context-tools.test.ts
+- [X] T083 [P] [US2] Write unit tests for symbol navigation module (definition lookup, reference finding, tree-sitter integration) in tests/unit/context/symbol-nav.test.ts
 
 ### Implementation for User Story 2
 
-- [ ] T040 [P] [US2] Implement repo map generator with web-tree-sitter — parse files, extract function/class signatures, respect maxTokens budget in src/context/repo-map.ts (Research Decision R3)
-- [ ] T041 [P] [US2] Implement AST-based code chunker — split files at function/class boundaries using tree-sitter in src/context/chunker.ts
-- [ ] T042 [P] [US2] Implement symbol navigation module — go-to-definition and find-references using tree-sitter in src/context/symbol-nav.ts
-- [ ] T043 [P] [US2] Implement dependency graph builder — parse import/require/from statements, resolve importers and importees in src/context/dep-graph.ts
-- [ ] T044 [US2] Implement embedding indexing with vectra and @xenova/transformers — index code chunks, support cosine similarity queries in src/context/embeddings.ts (Research Decision R2)
-- [ ] T045 [US2] Implement context-tools Pi Extension registering repo_map, semantic_search, symbol_nav, and dependency_graph tools in extensions/context-tools.ts
-- [ ] T046 [US2] Update context-gather step to load context-tools extension and use multi-signal retrieval (keyword + semantic + dependency) in src/steps/context-gather.ts
-- [ ] T047 [P] [US2] Create pre-warm script that builds repo map and embeddings index in scripts/warm-cache.sh
+- [X] T040 [P] [US2] Implement repo map generator with web-tree-sitter — parse files, extract function/class signatures, respect maxTokens budget in src/context/repo-map.ts (Research Decision R3)
+- [X] T041 [P] [US2] Implement AST-based code chunker — split files at function/class boundaries using tree-sitter in src/context/chunker.ts
+- [X] T042 [P] [US2] Implement symbol navigation module — go-to-definition and find-references using tree-sitter in src/context/symbol-nav.ts
+- [X] T043 [P] [US2] Implement dependency graph builder — parse import/require/from statements, resolve importers and importees in src/context/dep-graph.ts
+- [X] T044 [US2] Implement embedding indexing with vectra and @xenova/transformers — index code chunks, support cosine similarity queries in src/context/embeddings.ts (Research Decision R2)
+- [X] T045 [US2] Implement context-tools Pi Extension registering repo_map, semantic_search, symbol_nav, and dependency_graph tools in extensions/context-tools.ts
+- [X] T046 [US2] Update context-gather step to load context-tools extension and use multi-signal retrieval (keyword + semantic + dependency) in src/steps/context-gather.ts
+- [X] T047 [P] [US2] Create pre-warm script that builds repo map and embeddings index in scripts/warm-cache.sh
 
 **Checkpoint**: User Story 2 complete — the agent now gathers intelligent, multi-signal context using repo maps, semantic search, symbol navigation, and dependency tracing. Context stays within token budget.
 
