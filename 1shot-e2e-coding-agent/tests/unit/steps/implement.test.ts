@@ -69,6 +69,7 @@ function makeCtx(overrides: Partial<RunContext> = {}): RunContext {
     understanding: "The login function has a bug in bcrypt.compare argument order.",
     plan: SAMPLE_PLAN,
     retryCount: 0,
+    errorHashes: [],
     tokenBudget: {
       maxTokens: 200_000,
       consumed: 0,

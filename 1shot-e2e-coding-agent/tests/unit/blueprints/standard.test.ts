@@ -31,6 +31,13 @@ vi.mock("../../../src/steps/test.js", () => ({ testStep: vi.fn() }));
 vi.mock("../../../src/steps/fix-failures.js", () => ({ fixFailuresStep: vi.fn() }));
 vi.mock("../../../src/steps/commit-push.js", () => ({ commitPushStep: vi.fn() }));
 vi.mock("../../../src/steps/report.js", () => ({ reportStep: vi.fn() }));
+vi.mock("../../../extensions/quality-tools.js", () => ({
+  createQualityToolsExtension: vi.fn(() => ({
+    name: "quality-tools",
+    tools: ["run_test", "run_lint"],
+    toolDefinitions: [],
+  })),
+}));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -48,6 +55,7 @@ function makeCtx(overrides: Partial<RunContext> = {}): RunContext {
     understanding: "",
     plan: "",
     retryCount: 0,
+    errorHashes: [],
     tokenBudget: {
       maxTokens: 200_000,
       consumed: 0,

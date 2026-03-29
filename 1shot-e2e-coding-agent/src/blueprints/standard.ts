@@ -23,6 +23,7 @@ import { testStep } from "../steps/test.js";
 import { fixFailuresStep } from "../steps/fix-failures.js";
 import { commitPushStep } from "../steps/commit-push.js";
 import { reportStep } from "../steps/report.js";
+import { createQualityToolsExtension } from "../../extensions/quality-tools.js";
 import type { RunContext, StepResult } from "../types.js";
 
 // ─── Routing functions (exported for unit testing) ────────────────────────────
@@ -47,6 +48,13 @@ export function createStandardBlueprint(ctx: RunContext): BlueprintRunner {
 
   // Capture last test output for fix_failures — updated by the test node's next()
   let lastTestOutput = "";
+
+  // Quality-tools extension for the fix-failures node (run_test + run_lint)
+  const qualityTools = createQualityToolsExtension({
+    workspacePath: ctx.workspacePath,
+    testCommand: ctx.config.repo.testCommand,
+    lintCommand: ctx.config.repo.lintCommand,
+  });
 
   const runner = new BlueprintRunner("standard", "setup");
 
@@ -94,8 +102,10 @@ export function createStandardBlueprint(ctx: RunContext): BlueprintRunner {
     .addNode({
       id: "fix_failures",
       type: "agent",
-      execute: () => fixFailuresStep(ctx, lastTestOutput),
-      next: () => routeAfterFixFailures(ctx, maxRetries),
+      execute: () => fixFailuresStep(ctx, lastTestOutput, qualityTools.toolDefinitions),
+      // If fix_failures returned "failed" (oscillation or internal abort), route to null
+      // to terminate the blueprint rather than looping back to "test".
+      next: (result) => result.status === "passed" ? routeAfterFixFailures(ctx, maxRetries) : null,
     })
     .addNode({
       id: "commit_and_push",

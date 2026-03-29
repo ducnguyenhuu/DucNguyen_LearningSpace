@@ -37,6 +37,7 @@ function makeCtx(): RunContext {
     understanding: "",
     plan: "",
     retryCount: 0,
+    errorHashes: [],
     tokenBudget: {
       maxTokens: 200_000,
       consumed: 0,

@@ -144,15 +144,15 @@ Single project layout per plan.md:
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation.**
 
-- [ ] T048 [P] [US3] Write unit tests for enhanced fix-failures step (oscillation detection, structured error parsing) in tests/unit/steps/fix-failures.test.ts
-- [ ] T049 [P] [US3] Write extension tests for quality-tools Pi Extension (run_test, run_lint structured output) in tests/extensions/quality-tools.test.ts
+- [X] T048 [P] [US3] Write unit tests for enhanced fix-failures step (oscillation detection, structured error parsing) in tests/unit/steps/fix-failures.test.ts
+- [X] T049 [P] [US3] Write extension tests for quality-tools Pi Extension (run_test, run_lint structured output) in tests/extensions/quality-tools.test.ts
 
 ### Implementation for User Story 3
 
-- [ ] T050 [US3] Implement quality-tools Pi Extension registering run_test and run_lint tools with structured PASSED/FAILED output in extensions/quality-tools.ts
-- [ ] T051 [US3] Enhance fix-failures step with oscillation detection (track error hashes across retries), structured error injection into Pi session prompt, and configurable max retries in src/steps/fix-failures.ts (FR-008, FR-010, Risk R3)
-- [ ] T052 [US3] Enhance standard blueprint retry loop — load quality-tools extension for fix_failures node, enforce retry cap from config in src/blueprints/standard.ts
-- [ ] T053 [US3] Write integration test for retry loop — simulate lint failure → fix → pass, and oscillation → abort scenarios in tests/integration/retry-loop.test.ts
+- [X] T050 [US3] Implement quality-tools Pi Extension registering run_test and run_lint tools with structured PASSED/FAILED output in extensions/quality-tools.ts
+- [X] T051 [US3] Enhance fix-failures step with oscillation detection (track error hashes across retries), structured error injection into Pi session prompt, and configurable max retries in src/steps/fix-failures.ts (FR-008, FR-010, Risk R3)
+- [X] T052 [US3] Enhance standard blueprint retry loop — load quality-tools extension for fix_failures node, enforce retry cap from config in src/blueprints/standard.ts
+- [X] T053 [US3] Write integration test for retry loop — simulate lint failure → fix → pass, and oscillation → abort scenarios in tests/integration/retry-loop.test.ts
 
 **Checkpoint**: User Story 3 complete — the agent has a robust shift-left feedback loop with oscillation detection, structured error parsing, and quality-tools extensions. Max 2 retries enforced.
 
@@ -168,15 +168,15 @@ Single project layout per plan.md:
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation.**
 
-- [ ] T054 [P] [US4] Write unit tests for domain allowlist configuration module in tests/unit/security/domain-allowlist.test.ts
+- [X] T054 [P] [US4] Write unit tests for domain allowlist configuration module in tests/unit/security/domain-allowlist.test.ts
 
 ### Implementation for User Story 4
 
-- [ ] T055 [P] [US4] Implement domain allowlist configuration module — load allowed domains from config, validate URLs against allowlist in src/security/domain-allowlist.ts (FR-020, Research Decision R5)
-- [ ] T056 [US4] Create Dockerfile.devbox with node:20-slim base, Pi global install, tinyproxy with domain allowlist, agent copy, repo clone, dependency install, and pre-warm step in Dockerfile.devbox (FR-011, per initial_requirement.md Section 10)
-- [ ] T057 [P] [US4] Create docker-compose.yml with proxy network configuration and environment variable passthrough in docker-compose.yml
-- [ ] T058 [US4] Implement web-tools Pi Extension registering web_fetch tool with domain allowlist enforcement in extensions/web-tools.ts
-- [ ] T059 [US4] Write Docker integration test validating container isolation (filesystem boundary), tinyproxy domain filtering, and pre-warm artifacts in tests/integration/docker.test.ts — include edge cases: container OOM/disk exhaustion, non-allowlisted domain access attempt
+- [X] T055 [P] [US4] Implement domain allowlist configuration module — load allowed domains from config, validate URLs against allowlist in src/security/domain-allowlist.ts (FR-020, Research Decision R5)
+- [X] T056 [US4] Create Dockerfile.devbox with node:20-slim base, Pi global install, tinyproxy with domain allowlist, agent copy, repo clone, dependency install, and pre-warm step in Dockerfile.devbox (FR-011, per initial_requirement.md Section 10)
+- [X] T057 [P] [US4] Create docker-compose.yml with proxy network configuration and environment variable passthrough in docker-compose.yml
+- [X] T058 [US4] Implement web-tools Pi Extension registering web_fetch tool with domain allowlist enforcement in extensions/web-tools.ts
+- [X] T059 [US4] Write Docker integration test validating container isolation (filesystem boundary), tinyproxy domain filtering, and pre-warm artifacts in tests/integration/docker.test.ts — include edge cases: container OOM/disk exhaustion, non-allowlisted domain access attempt
 
 **Checkpoint**: User Story 4 complete — the agent runs inside an isolated Docker container with domain-restricted networking. All file operations are path-validated, all network requests are proxy-filtered.
 

@@ -194,6 +194,11 @@ export interface RunContext {
   /** Generated change plan (populated by plan node). */
   plan: string;
   retryCount: number;
+  /**
+   * Hashes of error outputs seen in previous fix-failures attempts.
+   * Used for oscillation detection — if the same hash appears again, abort.
+   */
+  errorHashes: string[];
   tokenBudget: TokenBudget;
   /** Structured logger (pino). Using unknown here to avoid coupling to pino types. */
   logger: unknown;

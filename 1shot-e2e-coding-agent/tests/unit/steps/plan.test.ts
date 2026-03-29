@@ -69,6 +69,7 @@ function makeCtx(overrides: Partial<RunContext> = {}): RunContext {
     understanding: "The login function calls validateCredentials in user.ts. Bug is in bcrypt.compare args.",
     plan: "",
     retryCount: 0,
+    errorHashes: [],
     tokenBudget: {
       maxTokens: 200_000,
       consumed: 0,

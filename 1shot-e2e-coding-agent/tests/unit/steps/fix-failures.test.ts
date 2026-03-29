@@ -1,8 +1,11 @@
 /**
- * tests/unit/steps/fix-failures.test.ts
+ * tests/unit/steps/fix-failures.test.ts — T048
  *
  * Tests the fix-failures step: Pi session with write tools, error output
- * injection into prompt, ctx.retryCount increment, and error handling.
+ * injection into prompt, ctx.retryCount increment, oscillation detection,
+ * error hash tracking, and error handling.
+ *
+ * T048 tests (oscillation detection) will FAIL until T051 implements the behavior.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -65,6 +68,7 @@ function makeCtx(overrides: Partial<RunContext> = {}): RunContext {
     understanding: "Bug is in bcrypt.compare argument order.",
     plan: "Fix validateCredentials() on line 42.",
     retryCount: 0,
+    errorHashes: [],
     tokenBudget: {
       maxTokens: 200_000,
       consumed: 0,
@@ -192,5 +196,132 @@ describe("fixFailuresStep()", () => {
   it("includes summary in result data", async () => {
     const result = await fixFailuresStep(makeCtx(), SAMPLE_ERROR_OUTPUT);
     expect(result.data?.summary).toBe("Fixed the failing test by correcting the assertion.");
+  });
+
+  // ─── Error hash tracking (T048 / T051) ────────────────────────────────────
+
+  it("stores a hash of errorOutput in ctx.errorHashes after a run", async () => {
+    const ctx = makeCtx({ errorHashes: [] });
+    await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    expect(ctx.errorHashes).toHaveLength(1);
+  });
+
+  it("does not store duplicate hashes when oscillation is detected", async () => {
+    const ctx = makeCtx({ errorHashes: [] });
+    // First call — stores hash
+    await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    expect(ctx.errorHashes).toHaveLength(1);
+    vi.clearAllMocks();
+    mockCreateSession.mockResolvedValue(FAKE_HANDLE);
+    mockRunPrompt.mockResolvedValue("Fixed.");
+    mockGetTokensUsed.mockReturnValue(3000);
+    // Second call with same error — oscillation detected, hash count stays 1
+    await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    expect(ctx.errorHashes).toHaveLength(1);
+  });
+
+  // ─── Oscillation detection (T048 / T051) ──────────────────────────────────
+
+  it("returns failed status when the same error appears a second time", async () => {
+    const ctx = makeCtx({ errorHashes: [] });
+    // First pass — succeeds, hash stored
+    await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    vi.clearAllMocks();
+    mockCreateSession.mockResolvedValue(FAKE_HANDLE);
+    mockRunPrompt.mockResolvedValue("Fixed.");
+    mockGetTokensUsed.mockReturnValue(3000);
+    // Second pass with identical error — oscillation
+    const result = await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    expect(result.status).toBe("failed");
+  });
+
+  it("oscillation result error message mentions oscillation", async () => {
+    const ctx = makeCtx({ errorHashes: [] });
+    await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    vi.clearAllMocks();
+    mockCreateSession.mockResolvedValue(FAKE_HANDLE);
+    mockRunPrompt.mockResolvedValue("Fixed.");
+    mockGetTokensUsed.mockReturnValue(3000);
+    const result = await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    expect(result.error).toMatch(/oscillation/i);
+  });
+
+  it("does not detect oscillation when errors are different", async () => {
+    const ctx = makeCtx({ errorHashes: [] });
+    await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    vi.clearAllMocks();
+    mockCreateSession.mockResolvedValue(FAKE_HANDLE);
+    mockRunPrompt.mockResolvedValue("Fixed.");
+    mockGetTokensUsed.mockReturnValue(3000);
+    const differentError = "SyntaxError: Unexpected token 'const' at line 99";
+    const result = await fixFailuresStep(ctx, differentError);
+    expect(result.status).toBe("passed");
+  });
+
+  it("does not call createSession when oscillation is detected", async () => {
+    const ctx = makeCtx({ errorHashes: [] });
+    await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    vi.clearAllMocks();
+    mockCreateSession.mockResolvedValue(FAKE_HANDLE);
+    await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    expect(mockCreateSession).not.toHaveBeenCalled();
+  });
+
+  // ─── Max retries enforcement (T048 / T051) ────────────────────────────────
+
+  it("returns failed status when retryCount reaches maxRetries", async () => {
+    const ctx = makeCtx({
+      retryCount: 2,
+      config: {
+        ...DEFAULT_CONFIG,
+        provider: { default: "anthropic", anthropicModel: "claude-sonnet-4-20250514", openaiModel: "gpt-4.1" },
+        repo: { ...DEFAULT_CONFIG.repo, testCommand: "npm test", lintCommand: "npm run lint" },
+        shiftLeft: { maxRetries: 2 },
+      },
+    });
+    const result = await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    expect(result.status).toBe("failed");
+  });
+
+  it("max retries failure error message mentions retry limit", async () => {
+    const ctx = makeCtx({
+      retryCount: 2,
+      config: {
+        ...DEFAULT_CONFIG,
+        provider: { default: "anthropic", anthropicModel: "claude-sonnet-4-20250514", openaiModel: "gpt-4.1" },
+        repo: { ...DEFAULT_CONFIG.repo, testCommand: "npm test", lintCommand: "npm run lint" },
+        shiftLeft: { maxRetries: 2 },
+      },
+    });
+    const result = await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    expect(result.error).toMatch(/retry|limit|max/i);
+  });
+
+  it("does not call createSession when retry limit is reached", async () => {
+    const ctx = makeCtx({
+      retryCount: 2,
+      config: {
+        ...DEFAULT_CONFIG,
+        provider: { default: "anthropic", anthropicModel: "claude-sonnet-4-20250514", openaiModel: "gpt-4.1" },
+        repo: { ...DEFAULT_CONFIG.repo, testCommand: "npm test", lintCommand: "npm run lint" },
+        shiftLeft: { maxRetries: 2 },
+      },
+    });
+    await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    expect(mockCreateSession).not.toHaveBeenCalled();
+  });
+
+  it("proceeds normally when retryCount is below maxRetries", async () => {
+    const ctx = makeCtx({
+      retryCount: 1,
+      config: {
+        ...DEFAULT_CONFIG,
+        provider: { default: "anthropic", anthropicModel: "claude-sonnet-4-20250514", openaiModel: "gpt-4.1" },
+        repo: { ...DEFAULT_CONFIG.repo, testCommand: "npm test", lintCommand: "npm run lint" },
+        shiftLeft: { maxRetries: 2 },
+      },
+    });
+    const result = await fixFailuresStep(ctx, SAMPLE_ERROR_OUTPUT);
+    expect(result.status).toBe("passed");
   });
 });
