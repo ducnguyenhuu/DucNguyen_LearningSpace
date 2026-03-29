@@ -80,6 +80,10 @@
 <!--
   ACTION REQUIRED: The content in this section represents placeholders.
   Fill them out with the right functional requirements.
+  
+  CONSTITUTION REMINDER (Principle I): Define any technical terms on first use.
+  CONSTITUTION REMINDER (Principle IV): If a requirement implies a design decision,
+  note the justification inline or in a footnote.
 -->
 
 ### Functional Requirements
@@ -113,3 +117,14 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+
+## Constitution Compliance
+
+<!--
+  This section is auto-checked during spec review.
+  Mark each principle as addressed or N/A.
+-->
+
+- [ ] **Principle I**: Technical terms defined on first use; explanations are beginner-friendly
+- [ ] **Principle III**: Spec is consistent with plan.md, tasks.md, and constitution.md
+- [ ] **Principle IV**: Any implicit design decisions include justification

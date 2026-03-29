@@ -53,7 +53,7 @@ Build a **personal-scale "Minion"**: an unattended coding agent that takes a tas
 |---|---|
 | **Devbox** — isolated EC2 instances with pre-warmed code/services | Docker container or Devcontainer with repo + tools pre-loaded |
 | **Blueprint** — state machine mixing deterministic nodes + agent nodes | Python workflow engine: ordered steps, some run code, some invoke LLM |
-| **Agent harness** — forked goose agent with Stripe customizations | Custom agent loop built on an LLM SDK (Claude/OpenAI API) with tool use |
+| **Agent harness** — forked goose agent with Stripe customizations | Microsoft Agent Framework `AIAgent` with custom providers for direct Anthropic + OpenAI API calls |
 | **Rule files** — `.cursorrules`, `AGENTS.md`, scoped to subdirectories | `AGENTS.md` / `CLAUDE.md` / `.cursorrules` loaded contextually |
 | **Toolshed (MCP)** — centralized MCP server with ~500 tools | Local MCP server with 10-15 curated tools for a single repo |
 | **Shift-left feedback** — lint locally before pushing, max 2 CI rounds | Local lint + test → push → CI check → one retry loop |
@@ -144,8 +144,8 @@ Pick **one brownfield repo** you actively work on. Ideal characteristics:
 |---|---|---|
 | **Language** | Python 3.12+ | Rich ecosystem for AI agents, easy prototyping |
 | **LLM** | Claude 4 Sonnet (via Anthropic API) | Strong coding, tool-use, long context. Swap to GPT-4.1 / Gemini as needed. |
-| **Agent framework** | Custom (thin wrapper over LLM API) | Full control over blueprint flow. No heavy frameworks. |
-| **Blueprint engine** | Custom Python state machine | Simple `Step` → `Step` graph with deterministic + agent node types |
+| **Agent framework** | Microsoft Agent Framework (`agent-framework` on PyPI) | Graph-based workflows, executors, edges, built-in OpenTelemetry, streaming, checkpointing. Custom providers for Anthropic + OpenAI. |
+| **Blueprint engine** | AF Workflows (`WorkflowBuilder` + Executors + Edges) | Directed graph with deterministic executors + AI agent nodes, conditional routing, superstep execution model |
 | **CLI** | `click` or `typer` | Task intake, config, dry-run mode |
 
 ### Devbox / Environment
@@ -162,8 +162,8 @@ Pick **one brownfield repo** you actively work on. Ideal characteristics:
 | Component | Technology | Why |
 |---|---|---|
 | **MCP server** | Python (`mcp` SDK) or `fastmcp` | Host tools locally, standard protocol |
-| **MCP transport** | stdio (for local) | Simplest for single-machine setup |
-| **Tool definitions** | Python functions decorated as MCP tools | Each tool = one focused capability |
+| **MCP transport** | stdio (for local) | Simplest for single-machine setup. AF has native Local MCP Tools support. |
+| **Tool definitions** | Python functions decorated as MCP tools | Each tool = one focused capability. AF `AIAgent` consumes MCP tools directly. |
 
 ### Context Engineering
 
@@ -191,7 +191,7 @@ Pick **one brownfield repo** you actively work on. Ideal characteristics:
 | Component | Technology | Why |
 |---|---|---|
 | **Logging** | `structlog` | Structured JSON logs for every step |
-| **Step tracing** | Custom (log each blueprint node enter/exit) | Debug agent runs, measure token usage |
+| **Step tracing** | AF built-in OpenTelemetry + structlog | Distributed tracing per-executor, monitoring, debugging. Token usage via custom middleware. |
 | **Cost tracking** | Token counting per LLM call | Track API spend per run |
 | **Run artifacts** | Save full conversation + diffs to `runs/` directory | Post-mortem analysis |
 
@@ -199,36 +199,46 @@ Pick **one brownfield repo** you actively work on. Ideal characteristics:
 
 ## 6. The Blueprint (Workflow Engine)
 
-The blueprint is the core orchestration primitive — a state machine that sequences **deterministic nodes** (just run code) and **agent nodes** (invoke LLM with tools).
+The blueprint is the core orchestration primitive — a **directed graph** (built with Microsoft Agent Framework's Workflow system) that sequences **deterministic executors** (just run code) and **agent executors** (invoke LLM with tools).
 
-### Blueprint Definition
+### Blueprint Definition (Using AF Workflows)
+
+The blueprint is implemented using Microsoft Agent Framework's **Workflow** system. **Executors** handle individual processing steps (either deterministic functions or AI agents). **Edges** define the flow between them, with optional conditions for branching.
 
 ```python
-from enum import Enum, auto
-from dataclasses import dataclass, field
-from typing import Callable, Optional
+# blueprints/standard.py — Standard minion blueprint using AF Workflows
+from agent_framework.workflows import WorkflowBuilder
+from agent.executors import setup, lint_and_format, test, commit_and_push, report
+from agent.agents import context_agent, plan_agent, implement_agent, fix_agent
 
-class NodeType(Enum):
-    DETERMINISTIC = auto()  # Run code, no LLM
-    AGENT = auto()          # LLM loop with tools
 
-@dataclass
-class BlueprintNode:
-    name: str
-    node_type: NodeType
-    execute: Callable          # The function to run
-    tools: list[str] = field(default_factory=list)  # MCP tools available (agent nodes only)
-    system_prompt: str = ""    # Custom prompt (agent nodes only)
-    max_iterations: int = 10   # Max tool-call loops (agent nodes only)
-    on_success: Optional[str] = None  # Next node name
-    on_failure: Optional[str] = None  # Fallback node name
-
-@dataclass
-class Blueprint:
-    name: str
-    nodes: dict[str, BlueprintNode]
-    entry_node: str
+def build_standard_blueprint():
+    """Build the 9-node standard minion workflow."""
+    workflow = (
+        WorkflowBuilder(setup)                                # 1. SETUP [deterministic]
+        .add_edge(setup, context_agent)                       # 2. CONTEXT GATHER [agent]
+        .add_edge(context_agent, plan_agent)                  # 3. PLAN [agent]
+        .add_edge(plan_agent, implement_agent)                # 4. IMPLEMENT [agent]
+        .add_edge(implement_agent, lint_and_format)           # 5. LINT & FORMAT [deterministic]
+        .add_edge(lint_and_format, test)                      # 6. TEST [deterministic]
+        .add_edge(test, commit_and_push, condition=passed)    # 7. → COMMIT [deterministic]
+        .add_edge(test, fix_agent, condition=failed)          # 7. → FIX [agent] (max 2 retries)
+        .add_edge(fix_agent, lint_and_format)                 #    retry loop back to lint
+        .add_edge(commit_and_push, report)                    # 8-9. REPORT [deterministic]
+        .build()
+    )
+    return workflow
 ```
+
+### Key AF Workflow Concepts
+
+| AF Concept | Maps To | Description |
+|---|---|---|
+| **Executor** | Blueprint node | Processing unit — deterministic function or AI agent |
+| **Edge** | `on_success` / `on_failure` | Connection between executors with optional conditions |
+| **WorkflowBuilder** | Blueprint graph | Fluent API for constructing the directed execution graph |
+| **Superstep** | Node execution round | BSP execution model — all triggered executors run, then barrier |
+| **AIAgent** | Agent node | LLM-powered executor with tools, instructions, and a provider |
 
 ### The Standard Minion Blueprint
 
@@ -320,40 +330,107 @@ As Stripe discovered: **"putting LLMs into contained boxes" compounds into syste
 
 ## 7. Agent Design
 
-### Core Agent Loop
+### Custom LLM Providers (No Azure Foundry)
 
-Each **agent node** in the blueprint runs a standard tool-use loop:
+Microsoft Agent Framework is Azure/OpenAI-centric by default. We implement **custom providers** to call **Anthropic and OpenAI APIs directly** — no Azure Foundry dependency. Each provider translates between the framework's internal format and each API's native tool-use protocol.
 
 ```python
-async def run_agent_node(
-    task: str,
-    system_prompt: str,
-    tools: list[Tool],
-    max_iterations: int = 10,
-    context: dict = None,
-) -> AgentResult:
-    """
-    Standard agent loop: prompt → tool calls → observe → repeat.
-    Terminates when LLM sends a final response (no tool calls)
-    or max_iterations is reached.
-    """
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": task},
-    ]
+# agent/providers/anthropic_provider.py
+from agent_framework.providers import AgentProvider, ProviderResponse
+import anthropic
 
-    for i in range(max_iterations):
-        response = await llm.chat(messages, tools=tools)
 
-        if response.stop_reason == "end_turn":
-            return AgentResult(success=True, output=response.text)
+class AnthropicProvider(AgentProvider):
+    """Custom provider for direct Anthropic API calls (Claude)."""
 
-        # Execute tool calls
-        for tool_call in response.tool_calls:
-            result = await execute_tool(tool_call)
-            messages.append(tool_call_message(tool_call, result))
+    def __init__(self, api_key: str, model: str = "claude-sonnet-4-20250514"):
+        self.client = anthropic.AsyncAnthropic(api_key=api_key)
+        self.model = model
 
-    return AgentResult(success=False, output="Max iterations reached")
+    async def generate(self, messages, tools=None, **kwargs) -> ProviderResponse:
+        # Translate AF tool definitions → Anthropic tool-use format
+        anthropic_tools = [self._convert_tool(t) for t in (tools or [])]
+        response = await self.client.messages.create(
+            model=self.model,
+            messages=self._convert_messages(messages),
+            tools=anthropic_tools,
+            max_tokens=kwargs.get("max_tokens", 16384),
+        )
+        return self._convert_response(response)
+
+    # ... conversion helpers for messages, tools, and responses
+```
+
+```python
+# agent/providers/openai_provider.py
+from agent_framework.providers import AgentProvider, ProviderResponse
+import openai
+
+
+class OpenAIProvider(AgentProvider):
+    """Custom provider for direct OpenAI API calls."""
+
+    def __init__(self, api_key: str, model: str = "gpt-4.1"):
+        self.client = openai.AsyncOpenAI(api_key=api_key)
+        self.model = model
+
+    async def generate(self, messages, tools=None, **kwargs) -> ProviderResponse:
+        # Translate AF tool definitions → OpenAI function-calling format
+        openai_tools = [self._convert_tool(t) for t in (tools or [])]
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=self._convert_messages(messages),
+            tools=openai_tools,
+        )
+        return self._convert_response(response)
+
+    # ... conversion helpers for messages, tools, and responses
+```
+
+### Agent Nodes (AIAgent per Blueprint Step)
+
+Each **agent node** in the workflow is an `AIAgent` configured with its own provider, instructions, and tool subset. The framework handles the tool-use loop internally (prompt → tool calls → observe → repeat).
+
+```python
+# agent/agents.py — Agent node definitions
+import os
+from agent_framework.agents import AIAgent
+from agent.providers.anthropic_provider import AnthropicProvider
+from agent.tools import (
+    repo_map, file_read, file_write, file_patch,
+    grep_search, semantic_search, symbol_nav,
+    dependency_graph, run_command, run_test, run_lint,
+)
+
+provider = AnthropicProvider(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+context_agent = AIAgent(
+    name="context_gather",
+    instructions="You are a code exploration agent...",  # see System Prompts below
+    tools=[repo_map, grep_search, semantic_search, file_read, symbol_nav, dependency_graph],
+    provider=provider,
+)
+
+plan_agent = AIAgent(
+    name="plan",
+    instructions="You are a software architect...",
+    tools=[file_read],  # read-only — no writes during planning
+    provider=provider,
+)
+
+implement_agent = AIAgent(
+    name="implement",
+    instructions="You are a senior developer...",
+    tools=[file_read, file_write, file_patch, grep_search, symbol_nav, run_command],
+    provider=provider,
+)
+
+fix_agent = AIAgent(
+    name="fix_failures",
+    instructions="You are a debugging expert...",
+    tools=[file_read, file_write, file_patch, grep_search, run_test, run_lint],
+    provider=provider,
+)
 ```
 
 ### Tool Scoping Per Node
@@ -369,7 +446,7 @@ Different blueprint nodes get different tool subsets:
 
 ### System Prompt Strategy
 
-Each agent node gets a **focused system prompt** that constrains its behavior:
+Each `AIAgent` gets a **focused `instructions` string** that constrains its behavior:
 
 - **Context Gather:** "You are a code exploration agent. Your job is to understand the codebase and identify files relevant to the task. Do NOT modify any files."
 - **Plan:** "You are a software architect. Given context about a codebase and a task, produce a detailed change plan. Do NOT write code."
@@ -743,12 +820,13 @@ If CI fails again:
 **Goal:** Skeleton that can run a deterministic-only workflow on your target repo.
 
 - [ ] Set up project structure (`agent/`, `tools/`, `blueprints/`, `scripts/`)
-- [ ] Build the Blueprint engine (state machine with node execution)
-- [ ] Implement deterministic nodes: Setup, Lint, Format, Test, Commit, Push, Report
+- [ ] Install Microsoft Agent Framework (`pip install agent-framework --pre`)
+- [ ] Build deterministic executors: Setup, Lint, Format, Test, Commit, Push, Report
+- [ ] Wire executors into a `WorkflowBuilder` graph (deterministic-only blueprint)
 - [ ] CLI entry point: `python -m agent run "task description"`
-- [ ] Structured logging with `structlog`
+- [ ] Structured logging with `structlog` + OpenTelemetry integration
 - [ ] Docker devbox: Dockerfile + `warm_cache.sh`
-- [ ] Test: run a blueprint that just lints + tests + commits (no LLM yet)
+- [ ] Test: run workflow that just lints + tests + commits (no LLM yet)
 
 ### Phase 2: MCP Tools (Week 2-3)
 
@@ -773,15 +851,17 @@ If CI fails again:
 - [ ] Dependency graph builder (parse import statements)
 - [ ] Agent rule file loader (`.cursorrules`, `AGENTS.md`, `CLAUDE.md`)
 
-### Phase 4: Agent Loop (Week 4-5)
+### Phase 4: Agent Integration (Week 4-5)
 
-**Goal:** LLM-powered agent nodes integrated into blueprint.
+**Goal:** LLM-powered AIAgent nodes integrated into workflow.
 
-- [ ] LLM client (Anthropic API with tool use)
-- [ ] Agent loop implementation (prompt → tool calls → observe → repeat)
-- [ ] Wire agent nodes into blueprint: Context Gather, Plan, Implement, Fix Failures
-- [ ] System prompts for each agent node
-- [ ] Tool scoping per node (restrict available tools)
+- [ ] Custom `AnthropicProvider` (translate AF format ↔ Anthropic tool-use API)
+- [ ] Custom `OpenAIProvider` (translate AF format ↔ OpenAI function-calling API)
+- [ ] Provider integration tests (verify tool calls round-trip correctly)
+- [ ] Define `AIAgent` nodes: Context Gather, Plan, Implement, Fix Failures
+- [ ] System prompts (`instructions`) for each agent node
+- [ ] Tool scoping per node (restrict available tools via `AIAgent` constructor)
+- [ ] Wire agent nodes into workflow alongside deterministic executors
 - [ ] Conversation logging (save full transcript per run)
 - [ ] Token usage tracking and cost reporting
 
@@ -875,15 +955,18 @@ Once v1 works reliably:
 ├── agent/                      # Core agent code
 │   ├── __init__.py
 │   ├── __main__.py             # CLI entry point
-│   ├── blueprint.py            # Blueprint engine (state machine)
-│   ├── agent_loop.py           # LLM agent loop (prompt → tools → observe)
-│   ├── llm_client.py           # Anthropic/OpenAI API wrapper
+│   ├── providers/              # Custom LLM providers (AF AgentProvider)
+│   │   ├── __init__.py
+│   │   ├── anthropic_provider.py  # Direct Anthropic API (Claude)
+│   │   └── openai_provider.py     # Direct OpenAI API (GPT-4.1)
+│   ├── agents.py               # AIAgent definitions (per blueprint node)
+│   ├── executors.py            # Deterministic executor functions
 │   ├── config.py               # Configuration loading (agent.toml)
-│   └── models.py               # Data models (AgentResult, RunState, etc.)
+│   └── models.py               # Data models (message types, run state, etc.)
 │
-├── blueprints/                 # Blueprint definitions
+├── blueprints/                 # Workflow definitions (AF WorkflowBuilder)
 │   ├── __init__.py
-│   └── standard.py             # Standard minion blueprint (9 nodes)
+│   └── standard.py             # Standard minion workflow (9 nodes)
 │
 ├── tools/                      # MCP tools
 │   ├── __init__.py
@@ -936,10 +1019,17 @@ Once v1 works reliably:
 ```toml
 [agent]
 name = "one-shot-agent"
-model = "claude-sonnet-4-20250514"
+framework = "agent-framework"  # Microsoft Agent Framework
 max_tokens_per_run = 200000
 max_cost_per_run_usd = 2.00
 timeout_seconds = 600
+
+[provider]
+# Custom providers — call Anthropic/OpenAI APIs directly (no Azure Foundry)
+default = "anthropic"
+anthropic_model = "claude-sonnet-4-20250514"
+openai_model = "gpt-4.1"
+# API keys read from environment: ANTHROPIC_API_KEY, OPENAI_API_KEY
 
 [repo]
 path = "/workspace"
