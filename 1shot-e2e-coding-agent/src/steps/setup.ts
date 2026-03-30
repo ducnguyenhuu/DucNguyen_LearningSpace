@@ -13,7 +13,7 @@
 
 import { join } from "node:path";
 import { access, readFile } from "node:fs/promises";
-import simpleGit from "simple-git";
+import { simpleGit } from "simple-git";
 import type { RunContext, StepResult } from "../types.js";
 
 const DEFAULT_BRANCH_PREFIX = "agent/";

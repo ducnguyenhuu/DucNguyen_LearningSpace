@@ -14,7 +14,8 @@
  *  - tokensUsed          — cumulative tokens consumed in this session
  */
 
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname, join, resolve } from "node:path";
 import { readFile } from "node:fs/promises";
 import {
   createSession,
@@ -48,6 +49,21 @@ When done, output:
 
 Do not modify any files.`.trim();
 
+// ─── Skill loader ───────────────────────────────────────────────────────────────
+
+/**
+ * Load skill instructions from the corresponding SKILL.md.
+ * Falls back to DEFAULT_SYSTEM_PROMPT if the file is absent.
+ */
+async function loadSkill(skillDir: string): Promise<string> {
+  const skillPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../skills", skillDir, "SKILL.md");
+  try {
+    return (await readFile(skillPath, "utf-8")).trim();
+  } catch {
+    return DEFAULT_SYSTEM_PROMPT;
+  }
+}
+
 // ─── File path parser ─────────────────────────────────────────────────────────
 
 /**
@@ -73,6 +89,9 @@ function parseRelevantFiles(output: string): string[] {
 // ─── contextGatherStep ────────────────────────────────────────────────────────
 
 export async function contextGatherStep(ctx: RunContext): Promise<StepResult> {
+  // ── 0. Load skill instructions ─────────────────────────────────────────────
+  const systemPrompt = await loadSkill("explore-codebase");
+
   // ── 1. Load AGENTS.md (non-fatal if absent) ────────────────────────────────
   let agentsMd = "";
   try {
@@ -114,7 +133,7 @@ export async function contextGatherStep(ctx: RunContext): Promise<StepResult> {
   try {
     handle = await createSession(
       {
-        systemPrompt: DEFAULT_SYSTEM_PROMPT,
+        systemPrompt,
         tools: ["read", "grep", "find", "ls"],
         extensions: [],
         provider,

@@ -34,8 +34,8 @@ function parseTestCounts(output: string): Pick<TestResult, "passed" | "failed" |
   const passFail = output.match(/Tests?:.*?(\d+)\s+passed.*?(\d+)\s+failed/i);
   if (passFail) {
     return {
-      passed: parseInt(passFail[1], 10),
-      failed: parseInt(passFail[2], 10),
+      passed: parseInt(passFail[1]!, 10),
+      failed: parseInt(passFail[2]!, 10),
       skipped: 0,
     };
   }
@@ -44,8 +44,8 @@ function parseTestCounts(output: string): Pick<TestResult, "passed" | "failed" |
   const failPass = output.match(/Tests?:.*?(\d+)\s+failed.*?(\d+)\s+passed/i);
   if (failPass) {
     return {
-      passed: parseInt(failPass[2], 10),
-      failed: parseInt(failPass[1], 10),
+      passed: parseInt(failPass[2]!, 10),
+      failed: parseInt(failPass[1]!, 10),
       skipped: 0,
     };
   }
@@ -54,7 +54,7 @@ function parseTestCounts(output: string): Pick<TestResult, "passed" | "failed" |
   const passedOnly = output.match(/(\d+)\s+passed/i);
   if (passedOnly) {
     return {
-      passed: parseInt(passedOnly[1], 10),
+      passed: parseInt(passedOnly[1]!, 10),
       failed: 0,
       skipped: 0,
     };
@@ -65,7 +65,7 @@ function parseTestCounts(output: string): Pick<TestResult, "passed" | "failed" |
   if (failedOnly) {
     return {
       passed: 0,
-      failed: parseInt(failedOnly[1], 10),
+      failed: parseInt(failedOnly[1]!, 10),
       skipped: 0,
     };
   }

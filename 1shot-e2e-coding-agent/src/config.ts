@@ -121,7 +121,7 @@ export async function loadConfig(configPath: string): Promise<AgentConfig> {
   }
 
   // Deep-merge user config over defaults
-  const merged = deepMerge(DEFAULT_CONFIG as Record<string, unknown>, userConfig as Record<string, unknown>) as AgentConfig;
+  const merged = deepMerge(DEFAULT_CONFIG as unknown as Record<string, unknown>, userConfig as unknown as Record<string, unknown>) as unknown as AgentConfig;
 
   // Validate and throw if there are any errors
   const errors = validateAgentConfig(merged);

@@ -378,7 +378,7 @@ function walkRust(root: SyntaxNode): RepoMapSymbol[] {
           .map((c) => c.text);
         if (typeIds.length > 0) {
           const name =
-            typeIds.length >= 2 ? `${typeIds[0]} for ${typeIds[1]}` : typeIds[0];
+            typeIds.length >= 2 ? `${typeIds[0]!} for ${typeIds[1]!}` : typeIds[0]!;
           symbols.push({ kind: "impl", name, line: child.startPosition.row + 1 });
         }
         break;
@@ -495,7 +495,7 @@ export async function generateRepoMap(options: RepoMapOptions): Promise<RepoMap>
     allEntries = (await readdir(
       workspacePath,
       { recursive: true } as Parameters<typeof readdir>[1],
-    )) as string[];
+    )) as unknown as string[];
   } catch {
     return { files: [], tokenCount: 0 };
   }

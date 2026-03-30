@@ -23,7 +23,7 @@ import type { RunContext, StepResult } from "../types.js";
 
 /**
  * Default system prompt for the plan node.
- * T032 will replace this with prompts/plan.md content.
+ * Used as fallback when skills/ cannot be read.
  */
 const DEFAULT_SYSTEM_PROMPT = `You are a software planning agent. Your job is to produce a
 structured, actionable change plan for a coding task.

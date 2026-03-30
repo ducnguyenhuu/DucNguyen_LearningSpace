@@ -108,7 +108,8 @@ describe("contextGatherStep()", () => {
     mockCreateSession.mockResolvedValue(FAKE_HANDLE);
     mockRunPrompt.mockResolvedValue(LLM_RESPONSE_WITH_FILES);
     mockGetTokensUsed.mockReturnValue(1500);
-    mockReadFile.mockRejectedValue(new Error("ENOENT")); // no AGENTS.md by default
+    // Default: reject all readFile calls (covers both skill loading and AGENTS.md)
+    mockReadFile.mockRejectedValue(new Error("ENOENT"));
     mockCreateContextToolsExtension.mockReturnValue({
       name: "context-tools",
       tools: ["repo_map", "semantic_search", "symbol_nav", "dependency_graph"],
@@ -186,6 +187,9 @@ describe("contextGatherStep()", () => {
   });
 
   it("includes AGENTS.md content in prompt when file is available", async () => {
+    // First readFile call is loadSkill() — let it fail so it uses DEFAULT_SYSTEM_PROMPT.
+    // Second readFile call is AGENTS.md — resolve with content.
+    mockReadFile.mockRejectedValueOnce(new Error("ENOENT"));
     mockReadFile.mockResolvedValueOnce("# Agent Rules\n- Always test before commit");
     await contextGatherStep(makeCtx());
     const [, userPrompt] = mockRunPrompt.mock.calls[0] as [unknown, string];

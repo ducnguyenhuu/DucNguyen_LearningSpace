@@ -22,6 +22,9 @@
  */
 
 import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
 import {
   createSession,
   runPrompt,
@@ -49,6 +52,17 @@ Use read/grep to investigate, write/edit to fix files, bash to verify locally.
 Focus only on fixing the reported failures — do not make unrelated changes.
 When done, briefly describe what you fixed and why.`.trim();
 
+// ─── Skill loader ───────────────────────────────────────────────────────────────
+
+async function loadSkill(skillDir: string): Promise<string> {
+  const skillPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../skills", skillDir, "SKILL.md");
+  try {
+    return (await readFile(skillPath, "utf-8")).trim();
+  } catch {
+    return DEFAULT_SYSTEM_PROMPT;
+  }
+}
+
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
 /** Compute a short SHA-256 hash of a string for oscillation detection. */
@@ -64,6 +78,9 @@ export async function fixFailuresStep(
   customTools?: unknown[],
 ): Promise<StepResult> {
   const maxRetries = ctx.config.shiftLeft?.maxRetries ?? 2;
+
+  // ── 0. Load skill instructions ─────────────────────────────────────────────
+  const systemPrompt = await loadSkill("fix-failures");
 
   // ── 1. Enforce max-retries cap ─────────────────────────────────────────────
   if (ctx.retryCount >= maxRetries) {
@@ -119,7 +136,7 @@ export async function fixFailuresStep(
   try {
     handle = await createSession(
       {
-        systemPrompt: DEFAULT_SYSTEM_PROMPT,
+        systemPrompt,
         tools: ["read", "write", "edit", "bash", "grep"],
         extensions: [],
         provider,
