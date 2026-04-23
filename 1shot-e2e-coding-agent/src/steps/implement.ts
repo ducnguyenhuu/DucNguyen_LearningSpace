@@ -15,6 +15,9 @@
  *  - tokensUsed   — cumulative tokens consumed in this session
  */
 
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
 import {
   createSession,
   runPrompt,
@@ -26,7 +29,7 @@ import type { RunContext, StepResult } from "../types.js";
 
 /**
  * Default system prompt for the implement node.
- * T032 will replace this with prompts/implement.md content.
+ * Used as fallback when skills/implement-feature/SKILL.md cannot be read.
  */
 const DEFAULT_SYSTEM_PROMPT = `You are a software implementation agent. Your job is to execute a
 structured change plan by making precise modifications to source code files.
@@ -45,9 +48,23 @@ Use the provided tools to implement all changes in the plan:
 Follow the plan precisely. Do not make changes outside the scope of the plan.
 When all changes are complete, write a brief summary of what you did.`.trim();
 
+// ─── Skill loader ───────────────────────────────────────────────────────────────
+
+async function loadSkill(skillDir: string): Promise<string> {
+  const skillPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../skills", skillDir, "SKILL.md");
+  try {
+    return (await readFile(skillPath, "utf-8")).trim();
+  } catch {
+    return DEFAULT_SYSTEM_PROMPT;
+  }
+}
+
 // ─── implementStep ────────────────────────────────────────────────────────────
 
 export async function implementStep(ctx: RunContext): Promise<StepResult> {
+  // ── 0. Load skill instructions ─────────────────────────────────────────────
+  const systemPrompt = await loadSkill("implement-feature");
+
   // ── 1. Resolve model from config ───────────────────────────────────────────
   const provider = ctx.config.provider.default;
   const model =
@@ -73,7 +90,7 @@ export async function implementStep(ctx: RunContext): Promise<StepResult> {
   try {
     handle = await createSession(
       {
-        systemPrompt: DEFAULT_SYSTEM_PROMPT,
+        systemPrompt,
         tools: ["read", "write", "edit", "bash", "grep", "find"],
         extensions: [],
         provider,

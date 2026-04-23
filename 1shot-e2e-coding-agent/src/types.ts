@@ -202,6 +202,17 @@ export interface RunContext {
   tokenBudget: TokenBudget;
   /** Structured logger (pino). Using unknown here to avoid coupling to pino types. */
   logger: unknown;
+  /**
+   * AbortSignal for per-run cancellation.
+   * Set by BlueprintRunner.run() from config.agent.timeoutSeconds (T073).
+   * Step functions may check this to bail out early.
+   */
+  abortSignal?: AbortSignal;
+  /**
+   * When true, destructive steps (implement / lint / test / commit) are skipped.
+   * Populated by the CLI --dry-run flag (T074).
+   */
+  dryRun?: boolean;
 }
 
 // ─── Blueprint types ──────────────────────────────────────────────────────────

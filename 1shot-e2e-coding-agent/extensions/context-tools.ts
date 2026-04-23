@@ -112,9 +112,10 @@ export function createContextToolsExtension(
       ),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+      const { maxTokens } = params as { maxTokens?: number };
       const map = await generateRepoMap({
         workspacePath,
-        maxTokens: params.maxTokens ?? repoMapMaxTokens,
+        maxTokens: maxTokens ?? repoMapMaxTokens,
       });
       const text = formatRepoMap(map);
       return {
@@ -147,7 +148,8 @@ export function createContextToolsExtension(
       ),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const results = await embeddingsIndex.query(params.query, params.topK ?? 5);
+      const { query, topK } = params as { query: string; topK?: number };
+      const results = await embeddingsIndex.query(query, topK ?? 5);
       if (results.length === 0) {
         return {
           content: [{ type: "text" as const, text: "No results found. The embedding index may not be built yet." }],
@@ -192,14 +194,15 @@ export function createContextToolsExtension(
       ),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
-      const files = params.files ?? await getAllSourceFiles(workspacePath);
+      const { symbol, operation, files: paramFiles } = params as { symbol: string; operation: string; files?: string[] };
+      const files = paramFiles ?? await getAllSourceFiles(workspacePath);
       const navOptions = { workspacePath };
 
-      if (params.operation === "definition") {
-        const defs = await findDefinition(params.symbol, files, navOptions);
+      if (operation === "definition") {
+        const defs = await findDefinition(symbol, files, navOptions);
         if (defs.length === 0) {
           return {
-            content: [{ type: "text" as const, text: `No definition found for '${params.symbol}'.` }],
+            content: [{ type: "text" as const, text: `No definition found for '${symbol}'.` }],
             details: [],
           };
         }
@@ -213,10 +216,10 @@ export function createContextToolsExtension(
       }
 
       // "references"
-      const refs = await findReferences(params.symbol, files, navOptions);
+      const refs = await findReferences(symbol, files, navOptions);
       if (refs.length === 0) {
         return {
-          content: [{ type: "text" as const, text: `No references found for '${params.symbol}'.` }],
+          content: [{ type: "text" as const, text: `No references found for '${symbol}'.` }],
           details: [],
         };
       }
@@ -254,18 +257,19 @@ export function createContextToolsExtension(
       ),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+      const { filePath, direction: paramDirection } = params as { filePath: string; direction?: string };
       const allFiles = await getAllSourceFiles(workspacePath);
       const graph = await buildDepGraph(allFiles, { workspacePath });
-      const direction = params.direction ?? "both";
+      const direction = paramDirection ?? "both";
 
       const sections: string[] = [];
       if (direction === "importers" || direction === "both") {
-        const importers = getImporters(graph, params.filePath);
-        sections.push(bulletList(`Importers of ${params.filePath}:`, importers));
+        const importers = getImporters(graph, filePath);
+        sections.push(bulletList(`Importers of ${filePath}:`, importers));
       }
       if (direction === "importees" || direction === "both") {
-        const importees = getImportees(graph, params.filePath);
-        sections.push(bulletList(`Importees of ${params.filePath}:`, importees));
+        const importees = getImportees(graph, filePath);
+        sections.push(bulletList(`Importees of ${filePath}:`, importees));
       }
 
       return {

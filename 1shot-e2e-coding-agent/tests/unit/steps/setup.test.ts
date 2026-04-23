@@ -128,7 +128,7 @@ describe("setupStep()", () => {
   it("creates git instance pointing at workspacePath", async () => {
     const ctx = makeCtx();
     await setupStep(ctx);
-    expect(mockGitDefault).toHaveBeenCalledWith("/workspace/test-repo");
+    expect(mockSimpleGit).toHaveBeenCalledWith("/workspace/test-repo");
   });
 
   // ─── AGENTS.md ───────────────────────────────────────────────────────────

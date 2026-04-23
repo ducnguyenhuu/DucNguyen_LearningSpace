@@ -192,18 +192,18 @@ Single project layout per plan.md:
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation.**
 
-- [ ] T060 [P] [US5] Write unit tests for run report generation (metrics aggregation, status formatting) in tests/unit/reporting/run-report.test.ts
-- [ ] T061 [P] [US5] Write unit tests for PR summary generation (body template, changes table, Octokit API call) in tests/unit/reporting/pr-summary.test.ts
-- [ ] T084 [P] [US5] Write unit tests for session transcript saving (JSONL format, directory creation, file naming) in tests/unit/reporting/transcript.test.ts
+- [X] T060 [P] [US5] Write unit tests for run report generation (metrics aggregation, status formatting) in tests/unit/reporting/run-report.test.ts
+- [X] T061 [P] [US5] Write unit tests for PR summary generation (body template, changes table, Octokit API call) in tests/unit/reporting/pr-summary.test.ts
+- [X] T084 [P] [US5] Write unit tests for session transcript saving (JSONL format, directory creation, file naming) in tests/unit/reporting/transcript.test.ts
 
 ### Implementation for User Story 5
 
-- [ ] T062 [P] [US5] Implement run report generation — aggregate NodeResults, compute totals, format summary per RunReport entity in src/reporting/run-report.ts (FR-014, data-model.md Entity 9)
-- [ ] T063 [P] [US5] Implement session transcript saving — save Pi session JSONL files to runs/{timestamp}/ directory in src/reporting/transcript.ts (FR-015)
-- [ ] T064 [US5] Implement PR summary generation with Octokit — create PR with structured body (changes table, test results, agent run details) per cli-contract.md PR body template in src/reporting/pr-summary.ts (FR-009, Research Decision R4, data-model.md Entity 10)
-- [ ] T065 [US5] Update commit-and-push step to create GitHub PR via Octokit after push in src/steps/commit-push.ts (Architecture Decision D5)
-- [ ] T066 [US5] Update report step to output full metrics, save report.json and metrics.json to run artifacts directory in src/steps/report.ts
-- [ ] T067 [US5] Write integration test for full reporting pipeline — run → report.json + metrics.json + session JSONL + PR creation in tests/integration/reporting.test.ts
+- [X] T062 [P] [US5] Implement run report generation — aggregate NodeResults, compute totals, format summary per RunReport entity in src/reporting/run-report.ts (FR-014, data-model.md Entity 9)
+- [X] T063 [P] [US5] Implement session transcript saving — save Pi session JSONL files to runs/{timestamp}/ directory in src/reporting/transcript.ts (FR-015)
+- [X] T064 [US5] Implement PR summary generation with Octokit — create PR with structured body (changes table, test results, agent run details) per cli-contract.md PR body template in src/reporting/pr-summary.ts (FR-009, Research Decision R4, data-model.md Entity 10)
+- [X] T065 [US5] Update commit-and-push step to create GitHub PR via Octokit after push in src/steps/commit-push.ts (Architecture Decision D5)
+- [X] T066 [US5] Update report step to output full metrics, save report.json and metrics.json to run artifacts directory in src/steps/report.ts
+- [X] T067 [US5] Write integration test for full reporting pipeline — run → report.json + metrics.json + session JSONL + PR creation in tests/integration/reporting.test.ts
 
 **Checkpoint**: User Story 5 complete — every run produces a comprehensive report, saves session transcripts, and creates a GitHub PR with a structured summary.
 
@@ -219,13 +219,13 @@ Single project layout per plan.md:
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation.**
 
-- [ ] T068 [P] [US6] Write integration tests for CLI init command (language detection, config generation, AGENTS.md creation) in tests/integration/cli-init.test.ts
+- [X] T068 [P] [US6] Write integration tests for CLI init command (language detection, config generation, AGENTS.md creation) in tests/integration/cli-init.test.ts
 
 ### Implementation for User Story 6
 
-- [ ] T069 [US6] Implement init CLI command — detect language from package.json/pyproject.toml/go.mod, detect test/lint commands, generate pi-agent.config.ts, create AGENTS.md if missing in src/cli.ts (per contracts/cli-contract.md init command)
-- [ ] T070 [P] [US6] Create AGENTS.md template file for target repos with coding conventions, testing rules, file editing strategy, and Do Not rules in src/templates/AGENTS.md (per initial_requirement.md Section 8)
-- [ ] T071 [US6] Write integration test for multi-config scenario — two configs with different providers and commands, verify correct execution in tests/integration/config-switch.test.ts
+- [X] T069 [US6] Implement init CLI command — detect language from package.json/pyproject.toml/go.mod, detect test/lint commands, generate pi-agent.config.ts, create AGENTS.md if missing in src/cli.ts (per contracts/cli-contract.md init command)
+- [X] T070 [P] [US6] Create AGENTS.md template file for target repos with coding conventions, testing rules, file editing strategy, and Do Not rules in src/templates/AGENTS.md (per initial_requirement.md Section 8)
+- [X] T071 [US6] Write integration test for multi-config scenario — two configs with different providers and commands, verify correct execution in tests/integration/config-switch.test.ts
 
 **Checkpoint**: User Story 6 complete — the agent can be configured for any target repo via a single config file. `init` generates sensible defaults. AGENTS.md template provides project rules to Pi sessions.
 
@@ -235,13 +235,13 @@ Single project layout per plan.md:
 
 **Purpose**: Reliability improvements, documentation, and benchmarking that affect multiple user stories.
 
-- [ ] T072 [P] Implement graceful error handling with try/catch at every blueprint node — capture errors, log failure context, continue to report step on failure in src/orchestrator.ts — handle edge cases: LLM API errors, missing test/lint config, git merge conflicts on target branch
-- [ ] T073 [P] Implement per-node and per-run timeout management — configurable timeouts, AbortController integration in src/orchestrator.ts
-- [ ] T074 [P] Add dry-run mode — show plan without executing changes, wire --dry-run flag to skip implement/lint/test/commit steps in src/cli.ts and src/blueprints/standard.ts
-- [ ] T075 [P] Create Pi Skills with SKILL.md instruction files in skills/explore-codebase/SKILL.md, skills/implement-feature/SKILL.md, and skills/fix-failures/SKILL.md
-- [ ] T076 Implement benchmark script — run agent against 10 known tasks, measure success rate, token usage, cost, and timing in scripts/benchmark.ts (validates SC-001, SC-002, SC-005, SC-009, SC-010, SC-011, SC-012, SC-013)
-- [ ] T077 Write project README.md with installation, usage examples, architecture overview, configuration guide, and troubleshooting in README.md
-- [ ] T078 Run quickstart.md validation — verify all 5 setup steps from quickstart.md work end-to-end on a fresh environment
+- [X] T072 [P] Implement graceful error handling with try/catch at every blueprint node — capture errors, log failure context, continue to report step on failure in src/orchestrator.ts — handle edge cases: LLM API errors, missing test/lint config, git merge conflicts on target branch
+- [X] T073 [P] Implement per-node and per-run timeout management — configurable timeouts, AbortController integration in src/orchestrator.ts
+- [X] T074 [P] Add dry-run mode — show plan without executing changes, wire --dry-run flag to skip implement/lint/test/commit steps in src/cli.ts and src/blueprints/standard.ts
+- [X] T075 [P] Create Pi Skills with SKILL.md instruction files in skills/explore-codebase/SKILL.md, skills/implement-feature/SKILL.md, and skills/fix-failures/SKILL.md
+- [X] T076 Implement benchmark script — run agent against 10 known tasks, measure success rate, token usage, cost, and timing in scripts/benchmark.ts (validates SC-001, SC-002, SC-005, SC-009, SC-010, SC-011, SC-012, SC-013)
+- [X] T077 Write project README.md with installation, usage examples, architecture overview, configuration guide, and troubleshooting in README.md
+- [X] T078 Run quickstart.md validation — verify all 5 setup steps from quickstart.md work end-to-end on a fresh environment
 
 ---
 

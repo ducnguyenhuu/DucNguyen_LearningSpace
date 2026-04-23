@@ -67,7 +67,6 @@ COPY src/ /agent/src/
 COPY extensions/ /agent/extensions/
 COPY skills/ /agent/skills/
 COPY scripts/ /agent/scripts/
-COPY prompts/ /agent/prompts/
 
 # Step 3: Compile TypeScript → JavaScript (output goes to /agent/dist/).
 RUN npm run build

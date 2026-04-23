@@ -42,6 +42,7 @@ interface ChunkMetadata {
   startLine: number;
   endLine: number;
   content: string;
+  [key: string]: string | number | boolean;
 }
 
 // ─── EmbeddingsIndex ──────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ export class EmbeddingsIndex {
       chunk: {
         filePath: item.metadata.filePath,
         id: item.metadata.id,
-        kind: item.metadata.kind,
+        kind: item.metadata.kind as CodeChunk["kind"],
         name: item.metadata.name,
         startLine: item.metadata.startLine,
         endLine: item.metadata.endLine,

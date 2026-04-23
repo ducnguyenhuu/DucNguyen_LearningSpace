@@ -10,6 +10,9 @@
  *   test FAIL  → fix_failures → test (retry loop)
  *   fix_failures retryCount ≥ maxRetries → null (run ends as failed)
  *
+ * T072: error fallback routes any failing node → report so artifacts are written.
+ * T074: ctx.dryRun skips implement / lint / test / fix_failures / commit_and_push.
+ *
  * The router functions are exported for unit testing without running the full pipeline.
  */
 
@@ -34,6 +37,17 @@ export function routeAfterTest(result: StepResult): string {
 
 export function routeAfterFixFailures(ctx: RunContext, maxRetries: number): string | null {
   return ctx.retryCount < maxRetries ? "test" : null;
+}
+
+// ─── Dry-run skip helper (T074) ───────────────────────────────────────────────
+
+/**
+ * Return a skipped StepResult when ctx.dryRun is true, otherwise return undefined
+ * to signal that the real step should execute.
+ */
+function dryRunSkip(ctx: RunContext, nodeId: string): Promise<StepResult> | undefined {
+  if (!ctx.dryRun) return undefined;
+  return Promise.resolve({ status: "passed", data: { skipped: true, reason: `dry-run: ${nodeId} skipped` } });
 }
 
 // ─── Blueprint factory ────────────────────────────────────────────────────────
@@ -80,20 +94,24 @@ export function createStandardBlueprint(ctx: RunContext): BlueprintRunner {
     .addNode({
       id: "implement",
       type: "agent",
-      execute: () => implementStep(ctx),
+      // T074: skip in dry-run
+      execute: () => dryRunSkip(ctx, "implement") ?? implementStep(ctx),
       next: () => "lint_and_format",
     })
     .addNode({
       id: "lint_and_format",
       type: "deterministic",
-      execute: () => lintFormatStep(ctx),
+      // T074: skip in dry-run
+      execute: () => dryRunSkip(ctx, "lint_and_format") ?? lintFormatStep(ctx),
       next: () => "test",
     })
     .addNode({
       id: "test",
       type: "deterministic",
-      execute: () => testStep(ctx),
+      // T074: skip in dry-run
+      execute: () => dryRunSkip(ctx, "test") ?? testStep(ctx),
       next: (result) => {
+        if (ctx.dryRun) return "commit_and_push";
         // Capture test output for fix_failures prompt
         lastTestOutput = String(result.data?.output ?? "");
         return routeAfterTest(result);
@@ -102,7 +120,10 @@ export function createStandardBlueprint(ctx: RunContext): BlueprintRunner {
     .addNode({
       id: "fix_failures",
       type: "agent",
-      execute: () => fixFailuresStep(ctx, lastTestOutput, qualityTools.toolDefinitions),
+      // T074: skip in dry-run (unreachable via test routing when dryRun, but guard anyway)
+      execute: () =>
+        dryRunSkip(ctx, "fix_failures") ??
+        fixFailuresStep(ctx, lastTestOutput, qualityTools.toolDefinitions),
       // If fix_failures returned "failed" (oscillation or internal abort), route to null
       // to terminate the blueprint rather than looping back to "test".
       next: (result) => result.status === "passed" ? routeAfterFixFailures(ctx, maxRetries) : null,
@@ -110,7 +131,8 @@ export function createStandardBlueprint(ctx: RunContext): BlueprintRunner {
     .addNode({
       id: "commit_and_push",
       type: "deterministic",
-      execute: () => commitPushStep(ctx),
+      // T074: skip in dry-run
+      execute: () => dryRunSkip(ctx, "commit_and_push") ?? commitPushStep(ctx),
       next: () => "report",
     })
     .addNode({
@@ -119,6 +141,9 @@ export function createStandardBlueprint(ctx: RunContext): BlueprintRunner {
       execute: () => reportStep(ctx),
       next: () => null,
     });
+
+  // T072: Any node failure routes to report so artifacts are always written
+  runner.setErrorFallback("report");
 
   return runner;
 }
